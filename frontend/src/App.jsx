@@ -284,7 +284,7 @@ export default function App() {
   const isMobile = window.innerWidth <= 768;
   const [headerExpanded, setHeaderExpanded] = useState(!isMobile);
   const bracketRef = useRef(null);
-  const [zoom, setZoom] = useZoom(bracketRef, isMobile ? 0.55 : 1.0);
+  const [zoom, setZoom] = useZoom(bracketRef, 1.0);
   useDragScroll(bracketRef);
 
   const fetchBracket = useCallback(async () => {
@@ -449,7 +449,7 @@ export default function App() {
       </div>
 
       {/* BRACKET */}
-      <div ref={bracketRef} style={{ overflowX: "auto", overflowY: "visible", WebkitOverflowScrolling: "touch", cursor: "grab", userSelect: "none" }}>
+      <div ref={bracketRef} style={{ overflow: isMobile ? "visible" : "auto", overflowY: "visible", WebkitOverflowScrolling: "touch", cursor: isMobile ? "default" : "grab", userSelect: "none" }}>
         <div style={{
           width: `${(svgW + 40) * zoom}px`,
           height: `${(totalH + 30) * zoom}px`,
