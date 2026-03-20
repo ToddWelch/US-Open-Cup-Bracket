@@ -569,7 +569,7 @@ export default function App() {
           Want an AI-built app like this for your business?{" "}
           <a href="https://welchcommercesystems.com" target="_blank" rel="noopener noreferrer"
             style={{ color: "#8acca0", textDecoration: "none", borderBottom: "1px solid #8acca066" }}>
-            Let's talk AI automation &amp; consulting
+            Let's talk AI assisted automation &amp; development
           </a>
         </p>
       </div>
