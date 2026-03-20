@@ -518,25 +518,25 @@ export default function App() {
 
       {/* SEO CONTENT */}
       <article style={{ borderTop: "1px solid #1a3a2a", padding: "24px 20px", background: "#0a1610", maxWidth: 900 }}>
-        <h2 style={{ fontSize: 16, fontWeight: 700, color: "#8acca0", marginBottom: 12 }}>
+        <h2 style={{ fontSize: 20, fontWeight: 700, color: "#8acca0", marginBottom: 12 }}>
           2026 Lamar Hunt U.S. Open Cup Bracket & Results
         </h2>
-        <p style={{ fontSize: 13, color: "#6a9a7a", lineHeight: 1.7, marginBottom: 12 }}>
+        <p style={{ fontSize: 15, color: "#6a9a7a", lineHeight: 1.7, marginBottom: 12 }}>
           The 111th edition of the Lamar Hunt U.S. Open Cup is the oldest ongoing soccer competition in the United States,
           open to all levels of men's soccer from Major League Soccer clubs to amateur and semi-professional teams.
           The 2026 tournament features 80 teams competing in a single-elimination format across seven rounds,
           from the First Round in March through the Final on October 21, with a $1 million prize purse.
         </p>
-        <h3 style={{ fontSize: 14, fontWeight: 700, color: "#7aba8a", marginBottom: 8 }}>Tournament Format</h3>
-        <p style={{ fontSize: 13, color: "#6a9a7a", lineHeight: 1.7, marginBottom: 12 }}>
+        <h3 style={{ fontSize: 16, fontWeight: 700, color: "#7aba8a", marginBottom: 8 }}>Tournament Format</h3>
+        <p style={{ fontSize: 15, color: "#6a9a7a", lineHeight: 1.7, marginBottom: 12 }}>
           The First Round (March 17-19) features 48 professional teams from USL Championship, USL League One,
           and MLS NEXT Pro alongside 32 amateur qualifiers from leagues including USL League Two, UPSL, NPSL, and regional associations.
           The 32 First Round winners advance to the Second Round (March 31 - April 1),
           and the 16 Second Round winners are joined by 16 MLS teams entering in the Round of 32 (April 14-15).
           The tournament continues through the Round of 16, Quarterfinals, Semifinals, and the Final.
         </p>
-        <h3 style={{ fontSize: 14, fontWeight: 700, color: "#7aba8a", marginBottom: 8 }}>First Round Highlights</h3>
-        <p style={{ fontSize: 13, color: "#6a9a7a", lineHeight: 1.7, marginBottom: 12 }}>
+        <h3 style={{ fontSize: 16, fontWeight: 700, color: "#7aba8a", marginBottom: 8 }}>First Round Highlights</h3>
+        <p style={{ fontSize: 15, color: "#6a9a7a", lineHeight: 1.7, marginBottom: 12 }}>
           The 2026 First Round delivered dramatic results and memorable cupsets across 32 matches.
           Lexington SC recorded the largest margin of victory with a 9-0 demolition of Flower City Union.
           Union Omaha dominated BOHFS St. Louis 8-0, while San Antonio FC cruised past ASC New Stars 6-0.
@@ -544,8 +544,8 @@ export default function App() {
           against higher-division opponents, continuing the tradition of giant-killing that makes the Open Cup
           one of the most exciting tournaments in American soccer.
         </p>
-        <h3 style={{ fontSize: 14, fontWeight: 700, color: "#7aba8a", marginBottom: 8 }}>About This Bracket Tracker</h3>
-        <p style={{ fontSize: 13, color: "#6a9a7a", lineHeight: 1.7, marginBottom: 0 }}>
+        <h3 style={{ fontSize: 16, fontWeight: 700, color: "#7aba8a", marginBottom: 8 }}>About This Bracket Tracker</h3>
+        <p style={{ fontSize: 15, color: "#6a9a7a", lineHeight: 1.7, marginBottom: 0 }}>
           This interactive bracket displays live scores and results for every round of the 2026 U.S. Open Cup.
           Teams are color-coded by league tier: MLS, USL Championship, USL League One, MLS NEXT Pro, USL League Two, and Amateur.
           Matches marked as cupsets indicate a lower-tier team defeating a higher-tier opponent.
@@ -557,12 +557,12 @@ export default function App() {
 
       {/* HOW IT WORKS */}
       <article style={{ borderTop: "1px solid #1a3a2a", padding: "24px 20px", background: "#0a1610", maxWidth: 900 }}>
-        <h2 style={{ fontSize: 16, fontWeight: 700, color: "#8acca0", marginBottom: 14 }}>
+        <h2 style={{ fontSize: 20, fontWeight: 700, color: "#8acca0", marginBottom: 14 }}>
           How This Website Works
         </h2>
 
-        <h3 style={{ fontSize: 14, fontWeight: 700, color: "#7aba8a", marginBottom: 6 }}>Architecture</h3>
-        <p style={{ fontSize: 13, color: "#6a9a7a", lineHeight: 1.7, marginBottom: 12 }}>
+        <h3 style={{ fontSize: 16, fontWeight: 700, color: "#7aba8a", marginBottom: 6 }}>Architecture</h3>
+        <p style={{ fontSize: 15, color: "#6a9a7a", lineHeight: 1.7, marginBottom: 12 }}>
           This is a full-stack single-page application built with a{" "}
           <strong style={{ color: "#8acca0" }}>Python/Flask</strong> backend and a{" "}
           <strong style={{ color: "#8acca0" }}>React</strong> frontend bundled with{" "}
@@ -572,24 +572,24 @@ export default function App() {
           updates and the API serves directly.
         </p>
 
-        <h3 style={{ fontSize: 14, fontWeight: 700, color: "#7aba8a", marginBottom: 6 }}>Live Data Pipeline</h3>
-        <p style={{ fontSize: 13, color: "#6a9a7a", lineHeight: 1.7, marginBottom: 12 }}>
+        <h3 style={{ fontSize: 16, fontWeight: 700, color: "#7aba8a", marginBottom: 6 }}>Live Data Pipeline</h3>
+        <p style={{ fontSize: 15, color: "#6a9a7a", lineHeight: 1.7, marginBottom: 12 }}>
           Scores update automatically through a multi-source data pipeline with built-in redundancy:
         </p>
-        <ul style={{ fontSize: 13, color: "#6a9a7a", lineHeight: 1.8, marginBottom: 12, paddingLeft: 20 }}>
+        <ul style={{ fontSize: 15, color: "#6a9a7a", lineHeight: 1.8, marginBottom: 12, paddingLeft: 20 }}>
           <li><strong style={{ color: "#8acca0" }}>Primary:</strong> ESPN public scoreboard API, queried by date range per round</li>
           <li><strong style={{ color: "#8acca0" }}>Backup:</strong> Wikipedia API, parsing structured wikitext football box templates</li>
           <li><strong style={{ color: "#8acca0" }}>Fallback:</strong> Direct scraping of ussoccer.com with BeautifulSoup</li>
           <li><strong style={{ color: "#8acca0" }}>Safety net:</strong> Existing data is never overwritten with fewer matches</li>
         </ul>
-        <p style={{ fontSize: 13, color: "#6a9a7a", lineHeight: 1.7, marginBottom: 12 }}>
+        <p style={{ fontSize: 15, color: "#6a9a7a", lineHeight: 1.7, marginBottom: 12 }}>
           An <strong style={{ color: "#8acca0" }}>APScheduler</strong> cron runs the pipeline every 2 hours by default,
           increasing to every 30 minutes during game windows (6 PM - midnight ET).
           The frontend polls the API every 5 minutes and re-renders when new data arrives.
         </p>
 
-        <h3 style={{ fontSize: 14, fontWeight: 700, color: "#7aba8a", marginBottom: 6 }}>Bracket Rendering</h3>
-        <p style={{ fontSize: 13, color: "#6a9a7a", lineHeight: 1.7, marginBottom: 12 }}>
+        <h3 style={{ fontSize: 16, fontWeight: 700, color: "#7aba8a", marginBottom: 6 }}>Bracket Rendering</h3>
+        <p style={{ fontSize: 15, color: "#6a9a7a", lineHeight: 1.7, marginBottom: 12 }}>
           The bracket is rendered as an{" "}
           <strong style={{ color: "#8acca0" }}>SVG</strong> with{" "}
           <strong style={{ color: "#8acca0" }}>foreignObject</strong> elements for HTML match cells.
@@ -599,34 +599,34 @@ export default function App() {
           Cupset detection compares tier rankings and flags when a lower-division team defeats a higher-division opponent.
         </p>
 
-        <h3 style={{ fontSize: 14, fontWeight: 700, color: "#7aba8a", marginBottom: 6 }}>Interaction</h3>
-        <p style={{ fontSize: 13, color: "#6a9a7a", lineHeight: 1.7, marginBottom: 12 }}>
+        <h3 style={{ fontSize: 16, fontWeight: 700, color: "#7aba8a", marginBottom: 6 }}>Interaction</h3>
+        <p style={{ fontSize: 15, color: "#6a9a7a", lineHeight: 1.7, marginBottom: 12 }}>
           The bracket supports click-and-drag panning on desktop (mouse events bound to the scroll container),
           pinch-to-zoom on touch devices, and Ctrl+Scroll wheel zoom.
-          Zoom is implemented via CSS <code style={{ color: "#8acca0", fontSize: 12 }}>transform: scale()</code> on
+          Zoom is implemented via CSS <code style={{ color: "#8acca0", fontSize: 14 }}>transform: scale()</code> on
           the bracket container, with presets from 55% (Fit) to 200% (XXL).
         </p>
 
-        <h3 style={{ fontSize: 14, fontWeight: 700, color: "#7aba8a", marginBottom: 6 }}>Deployment</h3>
-        <p style={{ fontSize: 13, color: "#6a9a7a", lineHeight: 1.7, marginBottom: 12 }}>
+        <h3 style={{ fontSize: 16, fontWeight: 700, color: "#7aba8a", marginBottom: 6 }}>Deployment</h3>
+        <p style={{ fontSize: 15, color: "#6a9a7a", lineHeight: 1.7, marginBottom: 12 }}>
           The app is containerized in a{" "}
           <strong style={{ color: "#8acca0" }}>multi-stage Docker</strong> build: Node 20 compiles the React frontend,
           then Python 3.11 serves it via <strong style={{ color: "#8acca0" }}>Gunicorn</strong>.
           Deployed on <strong style={{ color: "#8acca0" }}>Railway</strong> with automatic deploys from the{" "}
-          <code style={{ color: "#8acca0", fontSize: 12 }}>main</code> branch.
-          Health checks hit <code style={{ color: "#8acca0", fontSize: 12 }}>/api/health</code>.
+          <code style={{ color: "#8acca0", fontSize: 14 }}>main</code> branch.
+          Health checks hit <code style={{ color: "#8acca0", fontSize: 14 }}>/api/health</code>.
         </p>
 
-        <h3 style={{ fontSize: 14, fontWeight: 700, color: "#7aba8a", marginBottom: 6 }}>Tech Stack</h3>
+        <h3 style={{ fontSize: 16, fontWeight: 700, color: "#7aba8a", marginBottom: 6 }}>Tech Stack</h3>
         <div style={{ display: "flex", flexWrap: "wrap", gap: 6, marginBottom: 12 }}>
           {["Python 3.11", "Flask", "Gunicorn", "APScheduler", "BeautifulSoup", "React 18", "Vite", "SVG/foreignObject", "Docker", "Railway", "ESPN API", "Wikipedia API"].map(t => (
-            <span key={t} style={{ fontSize: 11, fontWeight: 700, padding: "2px 8px", borderRadius: 3,
+            <span key={t} style={{ fontSize: 13, fontWeight: 700, padding: "3px 10px", borderRadius: 3,
               color: "#4ade80", background: "#4ade8012", border: "1px solid #4ade8025", fontFamily: "monospace" }}>{t}</span>
           ))}
         </div>
 
-        <h3 style={{ fontSize: 14, fontWeight: 700, color: "#7aba8a", marginBottom: 6 }}>Open Source</h3>
-        <p style={{ fontSize: 13, color: "#6a9a7a", lineHeight: 1.7, marginBottom: 0 }}>
+        <h3 style={{ fontSize: 16, fontWeight: 700, color: "#7aba8a", marginBottom: 6 }}>Open Source</h3>
+        <p style={{ fontSize: 15, color: "#6a9a7a", lineHeight: 1.7, marginBottom: 0 }}>
           The full source code is available at{" "}
           <a href="https://github.com/ToddWelch/US-Open-Cup-Bracket" target="_blank" rel="noopener noreferrer"
             style={{ color: "#8acca0", textDecoration: "none", borderBottom: "1px dashed #8acca044" }}>
@@ -636,7 +636,7 @@ export default function App() {
 
       {/* BUILT BY */}
       <div style={{ borderTop: "1px solid #1a3a2a", padding: "16px 20px", background: "#080e0a", textAlign: "center" }}>
-        <p style={{ fontSize: 13, color: "#6a9a7a", lineHeight: 1.6, margin: 0 }}>
+        <p style={{ fontSize: 15, color: "#6a9a7a", lineHeight: 1.6, margin: 0 }}>
           This site was designed and built entirely by{" "}
           <a href="https://claude.ai/code" target="_blank" rel="noopener noreferrer"
             style={{ color: "#8acca0", textDecoration: "none", borderBottom: "1px dashed #8acca044" }}>Claude Code</a>
@@ -644,7 +644,7 @@ export default function App() {
           <a href="https://welchcommercesystems.com" target="_blank" rel="noopener noreferrer"
             style={{ color: "#4ade80", textDecoration: "none", fontWeight: 700, borderBottom: "1px dashed #4ade8044" }}>Welch Commerce Systems</a>.
         </p>
-        <p style={{ fontSize: 12, color: "#5a8a6a", marginTop: 6, marginBottom: 0 }}>
+        <p style={{ fontSize: 14, color: "#5a8a6a", marginTop: 6, marginBottom: 0 }}>
           Want an AI-built app like this for your business?{" "}
           <a href="https://welchcommercesystems.com" target="_blank" rel="noopener noreferrer"
             style={{ color: "#8acca0", textDecoration: "none", borderBottom: "1px solid #8acca066" }}>
