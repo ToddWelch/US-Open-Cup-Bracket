@@ -5,8 +5,8 @@
 }
 
 body {
-  background: #070f0b;
-  color: #c0d8cc;
+  background: #fff;
+  color: #333;
   font-family: 'Segoe UI', system-ui, sans-serif;
   -webkit-font-smoothing: antialiased;
 }
@@ -17,14 +17,14 @@ body {
 }
 
 ::-webkit-scrollbar-track {
-  background: #0a1610;
+  background: #f0f0f0;
 }
 
 ::-webkit-scrollbar-thumb {
-  background: #1a3a2a;
+  background: #ccc;
   border-radius: 4px;
 }
 
 ::-webkit-scrollbar-thumb:hover {
-  background: #2a5a3a;
+  background: #aaa;
 }

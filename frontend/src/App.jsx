@@ -2,12 +2,12 @@ import { useState, useRef, useEffect, useCallback } from "react";
 
 /* ═══════════ TIER SYSTEM ═══════════ */
 const TIERS = {
-  MLS:    { label: "MLS",  color: "#ff6b6b", bg: "#C41E3A44" },
-  "USL-C":{ label: "USLC", color: "#6ab0ff", bg: "#4A90D944" },
-  USL1:   { label: "USL1", color: "#5ece7a", bg: "#2D7D4F44" },
-  MLSNP:  { label: "NP",   color: "#a78bfa", bg: "#8B5CF644" },
-  USL2:   { label: "USL2", color: "#f0a850", bg: "#E08A2C44" },
-  AM:     { label: "AM",   color: "#c0c8d0", bg: "#9CA3AF44" },
+  MLS:    { label: "MLS",  color: "#fff", bg: "#C2002F" },
+  "USL-C":{ label: "USLC", color: "#fff", bg: "#1F4CD7" },
+  USL1:   { label: "USL1", color: "#fff", bg: "#27AE3D" },
+  MLSNP:  { label: "NP",   color: "#fff", bg: "#7C3AED" },
+  USL2:   { label: "USL2", color: "#fff", bg: "#D97706" },
+  AM:     { label: "AM",   color: "#fff", bg: "#6B7280" },
 };
 const MLS_L=["Atlanta United","Austin FC","Charlotte FC","Chicago Fire FC","Colorado Rapids","Columbus Crew","D.C. United","Houston Dynamo FC","Minnesota United FC","New England Revolution","New York City FC","Orlando City SC","Red Bull New York","San Jose Earthquakes","Sporting Kansas City","St. Louis CITY SC"];
 const USLC_L=["Charleston Battery","Detroit City FC","Hartford Athletic","Indy Eleven","Loudoun United FC","Louisville City FC","Pittsburgh Riverhounds SC","Rhode Island FC","Colorado Springs Switchbacks FC","El Paso Locomotive FC","FC Tulsa","Lexington SC","New Mexico United","Orange County SC","Phoenix Rising FC","Sacramento Republic FC","San Antonio FC"];
@@ -37,7 +37,7 @@ const ROUND_SIZES = [
 ];
 const FINAL_SIZE = { font: 16, badge: 13, cw: 218, ch: 60 };
 const HG = 30;
-const VG = 4;
+const VG = 10;
 
 function colX(colIdx) {
   let x = 0;
@@ -59,7 +59,7 @@ const RNAMES=[
 /* ═══════════ COMPONENTS ═══════════ */
 function TierBadge({team, size}){
   const tier=getTier(team);if(!tier)return null;const t=TIERS[tier];
-  return <span style={{fontSize:size||7,fontWeight:700,padding:"0 3px",borderRadius:2,color:t.color,background:t.bg,fontFamily:"monospace",lineHeight:`${(size||7)+6}px`,flexShrink:0,border:`1px solid ${t.color}25`}}>{t.label}</span>;
+  return <span style={{fontSize:size||7,fontWeight:700,padding:"1px 4px",borderRadius:3,color:t.color,background:t.bg,fontFamily:"monospace",lineHeight:`${(size||7)+6}px`,flexShrink:0}}>{t.label}</span>;
 }
 
 function Cell({match, x, y, roundIdx, isMls, isChamp}){
@@ -77,19 +77,19 @@ function Cell({match, x, y, roundIdx, isMls, isChamp}){
     const dn = isMls && tbd && isTop ? "MLS Team" : isMls && tbd && !isTop ? "R2 Winner" : name || "TBD";
     return (
       <div style={{display:"flex",alignItems:"center",height:rowH,
-        background:won?"#102e1c":"transparent",
-        borderTop:isTop?"none":"1px solid #162a20",
-        borderLeft:won?"2px solid #4ade80":"2px solid transparent",
+        background:won?"#e8f5ee":"#fff",
+        borderTop:isTop?"none":"1px solid #e0e0e0",
+        borderLeft:won?"3px solid #27AE3D":"3px solid transparent",
         paddingLeft:5,paddingRight:5,gap:3}}>
         {name && <TierBadge team={name} size={sz.badge}/>}
         <span style={{flex:1,fontSize:sz.font,fontWeight:won?700:400,
           whiteSpace:"nowrap",overflow:"hidden",textOverflow:"ellipsis",
-          color:tbd?"#7aba8a":won?"#4ade80":"#9ecaae",
+          color:tbd?"#999":won?"#15192B":"#333",
           fontStyle:tbd?"italic":"normal"}}>{dn}</span>
-        {m.note && isTop && <span style={{fontSize:Math.max(6, sz.badge-1),color:"#4ade8066",fontFamily:"monospace"}}>{m.note}</span>}
+        {m.note && isTop && <span style={{fontSize:Math.max(6, sz.badge-1),color:"#999",fontFamily:"monospace"}}>{m.note}</span>}
         <span style={{fontSize:sz.font,fontWeight:700,minWidth:14,textAlign:"right",
           fontFamily:"monospace",
-          color:won?"#4ade80":score!=null?"#4a7a5a":"#1e3e2e"}}>{score!=null?score:""}</span>
+          color:won?"#27AE3D":score!=null?"#555":"#ccc"}}>{score!=null?score:""}</span>
       </div>
     );
   };
@@ -97,17 +97,17 @@ function Cell({match, x, y, roundIdx, isMls, isChamp}){
   return (
     <foreignObject x={x} y={y} width={bw} height={bh}>
       <div style={{width:bw,height:bh,position:"relative",
-        border:`1px solid ${cupset?"#E08A2C88":isChamp?"#4ade8060":win?"#2a5a3a":"#162a20"}`,
+        border:`1px solid ${cupset?"#D97706":isChamp?"#C2002F":"#d0d0d0"}`,
         borderRadius:isChamp?6:3,overflow:"hidden",
-        background:isChamp?"#0e2418":"#0c1812",
-        boxShadow:cupset?"0 0 8px #E08A2C22":isChamp?"0 0 24px #4ade8018":"none"}}>
-        {cupset && <span style={{position:"absolute",top:-1,right:3,fontSize:Math.max(7,sz.badge-2),fontWeight:800,color:"#E08A2C",fontFamily:"monospace",letterSpacing:"0.05em"}}>CUPSET</span>}
+        background:isChamp?"#fff":"#fff",
+        boxShadow:cupset?"0 0 6px #D9770633":isChamp?"0 0 12px #C2002F22":"0 1px 3px #00000012"}}>
+        {cupset && <span style={{position:"absolute",top:-1,right:3,fontSize:Math.max(7,sz.badge-2),fontWeight:800,color:"#D97706",fontFamily:"monospace",letterSpacing:"0.05em"}}>CUPSET</span>}
         {isChamp && (
-          <div style={{textAlign:"center",fontSize:9,fontWeight:800,color:"#4ade80",
+          <div style={{textAlign:"center",fontSize:9,fontWeight:800,color:"#fff",
             letterSpacing:"0.18em",fontFamily:"monospace",padding:"2px 0",height:headerH,
             display:"flex",alignItems:"center",justifyContent:"center",
-            background:"linear-gradient(90deg,#0a1e14,#122e1e,#0a1e14)",
-            borderBottom:"1px solid #1a3a2a"}}>FINAL &#183; OCT 21</div>
+            background:"#C2002F",
+            borderBottom:"1px solid #a0001f"}}>FINAL &#183; OCT 21</div>
         )}
         {row(m.home,m.homeScore,win===m.home,true)}
         {row(m.away,m.awayScore,win===m.away,false)}
@@ -170,7 +170,7 @@ function DrawConns({ conns }) {
   return conns.map((c, i) => {
     const mx = (c.x1 + c.x2) / 2;
     return <path key={i} d={`M${c.x1},${c.y1}H${mx}V${c.y2}H${c.x2}`}
-      fill="none" stroke="#1a3a2a" strokeWidth={1} />;
+      fill="none" stroke="#c0c0c0" strokeWidth={1} />;
   });
 }
 
@@ -362,41 +362,41 @@ export default function App() {
   ];
 
   return (
-    <div style={{ background: "#070f0b", minHeight: "100vh", color: "#c0d8cc", fontFamily: "'Segoe UI',system-ui,sans-serif" }}>
+    <div style={{ background: "#fff", minHeight: "100vh", color: "#333", fontFamily: "'Segoe UI',system-ui,sans-serif" }}>
 
       {/* HEADER */}
-      <div style={{ borderBottom: "1px solid #1a3a2a", padding: "14px 20px 12px",
-        background: "linear-gradient(180deg,#0e2118 0%,#070f0b 100%)" }}>
+      <div style={{ borderBottom: "1px solid #e0e0e0", padding: "14px 20px 12px",
+        background: "#15192B" }}>
         <div style={{ display: "flex", alignItems: "flex-start", justifyContent: "space-between", flexWrap: "wrap", gap: 8 }}>
           <div>
-            <h1 style={{ margin: 0, fontSize: 21, fontWeight: 800, color: "#e8f5ee", letterSpacing: "-0.02em" }}>
-              <span style={{ color: "#4ade80" }}>2026</span>{" "}
+            <h1 style={{ margin: 0, fontSize: 21, fontWeight: 800, color: "#fff", letterSpacing: "-0.02em" }}>
+              <span style={{ color: "#C2002F" }}>2026</span>{" "}
               <a href="https://www.ussoccer.com/us-open-cup" target="_blank" rel="noopener noreferrer"
-                style={{ color: "#e8f5ee", textDecoration: "none", borderBottom: "1px dashed #4ade8066" }}>
+                style={{ color: "#fff", textDecoration: "none", borderBottom: "1px dashed #ffffff44" }}>
                 Lamar Hunt U.S. Open Cup
               </a>
             </h1>
-            <div style={{ fontSize: 14, color: "#8acca0", fontFamily: "monospace", marginTop: 2, letterSpacing: "0.1em" }}>
+            <div style={{ fontSize: 14, color: "#bfbfbf", fontFamily: "monospace", marginTop: 2, letterSpacing: "0.1em" }}>
               111TH EDITION &#183; 80 TEAMS &#183; 7 ROUNDS &#183; $1M PURSE
             </div>
           </div>
           <div style={{ display: "flex", gap: 8 }}>
-            <div style={{ background: "#0c1812", border: "1px solid #1a3a2a", borderRadius: 4, padding: "3px 10px", textAlign: "center" }}>
-              <div style={{ fontSize: 20, fontWeight: 800, color: "#4ade80", fontFamily: "monospace" }}>{totalComplete}<span style={{ fontSize: 14, color: "#8acca0" }}>/32</span></div>
-              <div style={{ fontSize: 12, color: "#8acca0", fontFamily: "monospace", letterSpacing: "0.08em" }}>R1 DONE</div>
+            <div style={{ background: "#212844", border: "1px solid #3a3f5c", borderRadius: 4, padding: "3px 10px", textAlign: "center" }}>
+              <div style={{ fontSize: 20, fontWeight: 800, color: "#27AE3D", fontFamily: "monospace" }}>{totalComplete}<span style={{ fontSize: 14, color: "#bfbfbf" }}>/32</span></div>
+              <div style={{ fontSize: 12, color: "#bfbfbf", fontFamily: "monospace", letterSpacing: "0.08em" }}>R1 DONE</div>
             </div>
-            <div style={{ background: "#0c1812", border: "1px solid #1a3a2a", borderRadius: 4, padding: "3px 10px", textAlign: "center" }}>
-              <div style={{ fontSize: 20, fontWeight: 800, color: "#E08A2C", fontFamily: "monospace" }}>{cupsetCount}</div>
-              <div style={{ fontSize: 12, color: "#8acca0", fontFamily: "monospace", letterSpacing: "0.08em" }}>CUPSETS</div>
+            <div style={{ background: "#212844", border: "1px solid #3a3f5c", borderRadius: 4, padding: "3px 10px", textAlign: "center" }}>
+              <div style={{ fontSize: 20, fontWeight: 800, color: "#D97706", fontFamily: "monospace" }}>{cupsetCount}</div>
+              <div style={{ fontSize: 12, color: "#bfbfbf", fontFamily: "monospace", letterSpacing: "0.08em" }}>CUPSETS</div>
             </div>
           </div>
         </div>
 
         {/* Toggle for mobile */}
         <button onClick={() => setHeaderExpanded(e => !e)} style={{
-          background: "transparent", border: "1px solid #1a3a2a", borderRadius: 3,
+          background: "transparent", border: "1px solid #3a3f5c", borderRadius: 3,
           padding: "4px 12px", cursor: "pointer", marginTop: 8,
-          color: "#8acca0", fontSize: 12, fontWeight: 700, fontFamily: "monospace",
+          color: "#bfbfbf", fontSize: 12, fontWeight: 700, fontFamily: "monospace",
         }}>{headerExpanded ? "Hide Controls" : "Show Legend & Zoom"}</button>
 
         {headerExpanded && <>
@@ -413,12 +413,12 @@ export default function App() {
               }[key];
               return (
                 <div key={key} style={{ display: "flex", alignItems: "center", gap: 3 }}>
-                  <span style={{ fontSize: 12, fontWeight: 700, padding: "1px 5px", borderRadius: 2, color: t.color, background: t.bg, fontFamily: "monospace", border: `1px solid ${t.color}25` }}>{t.label}</span>
+                  <span style={{ fontSize: 12, fontWeight: 700, padding: "1px 5px", borderRadius: 3, color: t.color, background: t.bg, fontFamily: "monospace" }}>{t.label}</span>
                   {info.url ? (
                     <a href={info.url} target="_blank" rel="noopener noreferrer"
-                      style={{ fontSize: 13, color: "#8acca0", textDecoration: "none", borderBottom: "1px dashed #8acca044" }}>{info.name}</a>
+                      style={{ fontSize: 13, color: "#ddd", textDecoration: "none", borderBottom: "1px dashed #ffffff33" }}>{info.name}</a>
                   ) : (
-                    <span style={{ fontSize: 13, color: "#8acca0" }}>{info.name}</span>
+                    <span style={{ fontSize: 13, color: "#ddd" }}>{info.name}</span>
                   )}
                 </div>
               );
@@ -427,23 +427,23 @@ export default function App() {
 
           {/* Zoom Controls */}
           <div style={{ display: "flex", alignItems: "center", gap: 8, marginTop: 10, flexWrap: "wrap" }}>
-            <span style={{ fontSize: 13, color: "#8acca0", fontFamily: "monospace", letterSpacing: "0.1em" }}>ZOOM</span>
+            <span style={{ fontSize: 13, color: "#bfbfbf", fontFamily: "monospace", letterSpacing: "0.1em" }}>ZOOM</span>
             <input type="range" min={30} max={200} value={Math.round(zoom * 100)}
               onChange={e => setZoom(Number(e.target.value) / 100)}
-              style={{ width: 100, accentColor: "#4ade80", height: 4, cursor: "pointer" }} />
-            <span style={{ fontSize: 14, fontFamily: "monospace", color: "#4ade80", minWidth: 36 }}>{Math.round(zoom * 100)}%</span>
+              style={{ width: 100, accentColor: "#C2002F", height: 4, cursor: "pointer" }} />
+            <span style={{ fontSize: 14, fontFamily: "monospace", color: "#fff", minWidth: 36 }}>{Math.round(zoom * 100)}%</span>
             <div style={{ display: "flex", gap: 3, marginLeft: 4 }}>
               {zoomPresets.map(p => (
                 <button key={p.label} onClick={() => setZoom(p.val)} style={{
-                  background: Math.abs(zoom - p.val) < 0.05 ? "#4ade8018" : "transparent",
-                  border: Math.abs(zoom - p.val) < 0.05 ? "1px solid #4ade8040" : "1px solid #1a3a2a",
+                  background: Math.abs(zoom - p.val) < 0.05 ? "#C2002F" : "transparent",
+                  border: Math.abs(zoom - p.val) < 0.05 ? "1px solid #C2002F" : "1px solid #3a3f5c",
                   borderRadius: 3, padding: "2px 7px", cursor: "pointer",
-                  color: Math.abs(zoom - p.val) < 0.05 ? "#4ade80" : "#3e6e4e",
+                  color: Math.abs(zoom - p.val) < 0.05 ? "#fff" : "#bfbfbf",
                   fontSize: 12, fontWeight: 700, fontFamily: "monospace",
                 }}>{p.label}</button>
               ))}
             </div>
-            <span style={{ fontSize: 12, color: "#8acca0", fontFamily: "monospace", marginLeft: 8 }}>Ctrl+Scroll or Pinch to zoom</span>
+            <span style={{ fontSize: 12, color: "#999", fontFamily: "monospace", marginLeft: 8 }}>Ctrl+Scroll or Pinch to zoom</span>
           </div>
         </>}
       </div>
@@ -463,13 +463,13 @@ export default function App() {
           <div style={{ display: "flex", paddingTop: 10, paddingBottom: 4 }}>
             {RNAMES.map((r, i) => (
               <div key={i} style={{ width: ROUND_SIZES[i].cw, marginLeft: i === 0 ? 0 : HG, textAlign: "center", flexShrink: 0 }}>
-                <div style={{ fontSize: 14, fontWeight: 800, color: i === 0 ? "#4ade80" : "#8acca0", letterSpacing: "0.12em", fontFamily: "monospace" }}>{r.name}</div>
-                <div style={{ fontSize: 12, color: "#7aba8a", fontFamily: "monospace" }}>{r.sub}</div>
+                <div style={{ fontSize: 14, fontWeight: 800, color: i === 0 ? "#C2002F" : "#15192B", letterSpacing: "0.12em", fontFamily: "monospace" }}>{r.name}</div>
+                <div style={{ fontSize: 12, color: "#777", fontFamily: "monospace" }}>{r.sub}</div>
               </div>
             ))}
             <div style={{ width: FINAL_SIZE.cw, marginLeft: HG, textAlign: "center", flexShrink: 0 }}>
-              <div style={{ fontSize: 14, fontWeight: 800, color: "#4ade80", letterSpacing: "0.12em", fontFamily: "monospace" }}>FINAL</div>
-              <div style={{ fontSize: 12, color: "#7aba8a", fontFamily: "monospace" }}>Oct 21</div>
+              <div style={{ fontSize: 14, fontWeight: 800, color: "#C2002F", letterSpacing: "0.12em", fontFamily: "monospace" }}>FINAL</div>
+              <div style={{ fontSize: 12, color: "#777", fontFamily: "monospace" }}>Oct 21</div>
             </div>
           </div>
 
@@ -478,30 +478,30 @@ export default function App() {
             {/* Upper Bracket */}
             <DrawConns conns={topB.conns} />
             <DrawRounds rounds={topB.rounds} />
-            <text x={4} y={regionH + 8} fill="#8acca0" fontSize={10} fontFamily="monospace" fontWeight={700} letterSpacing="0.12em">UPPER BRACKET</text>
+            <text x={4} y={regionH + 8} fill="#15192B" fontSize={10} fontFamily="monospace" fontWeight={700} letterSpacing="0.12em">UPPER BRACKET</text>
 
             {/* Divider */}
             <line x1={0} y1={regionH + dividerGap / 2} x2={colX(5) + semiSz.cw + 10} y2={regionH + dividerGap / 2}
-              stroke="#1a3a2a" strokeWidth={1} strokeDasharray="6,4" opacity={0.6} />
+              stroke="#c0c0c0" strokeWidth={1} strokeDasharray="6,4" opacity={0.6} />
 
             {/* Lower Bracket */}
             <g transform={`translate(0,${botOffset})`}>
               <DrawConns conns={botB.conns} />
               <DrawRounds rounds={botB.rounds} />
             </g>
-            <text x={4} y={botOffset - 8} fill="#8acca0" fontSize={10} fontFamily="monospace" fontWeight={700} letterSpacing="0.12em">LOWER BRACKET</text>
+            <text x={4} y={botOffset - 8} fill="#15192B" fontSize={10} fontFamily="monospace" fontWeight={700} letterSpacing="0.12em">LOWER BRACKET</text>
 
             {/* Upper Semi -> Final */}
             <path d={`M${topSemi ? topSemi.x + semiSz.cw : colX(5) + semiSz.cw},${topSemiMidY} H${finalX - 16} V${finalY + FINAL_SIZE.ch * 0.35} H${finalX}`}
-              fill="none" stroke="#4ade8040" strokeWidth={1.5} strokeLinecap="round" />
+              fill="none" stroke="#C2002F66" strokeWidth={1.5} strokeLinecap="round" />
 
             {/* Lower Semi -> Final */}
             <path d={`M${botSemi ? botSemi.x + semiSz.cw : colX(5) + semiSz.cw},${botSemiMidY} H${finalX - 16} V${finalY + FINAL_SIZE.ch * 0.65} H${finalX}`}
-              fill="none" stroke="#4ade8040" strokeWidth={1.5} strokeLinecap="round" />
+              fill="none" stroke="#C2002F66" strokeWidth={1.5} strokeLinecap="round" />
 
             {/* Labels on converging lines */}
-            <text x={finalX - 20} y={finalY + FINAL_SIZE.ch * 0.35 - 5} textAnchor="end" fill="#4ade8088" fontSize={10} fontFamily="monospace">UPPER</text>
-            <text x={finalX - 20} y={finalY + FINAL_SIZE.ch * 0.65 + 10} textAnchor="end" fill="#4ade8088" fontSize={10} fontFamily="monospace">LOWER</text>
+            <text x={finalX - 20} y={finalY + FINAL_SIZE.ch * 0.35 - 5} textAnchor="end" fill="#C2002F88" fontSize={10} fontFamily="monospace">UPPER</text>
+            <text x={finalX - 20} y={finalY + FINAL_SIZE.ch * 0.65 + 10} textAnchor="end" fill="#C2002F88" fontSize={10} fontFamily="monospace">LOWER</text>
 
             {/* Final Box */}
             <Cell match={null} x={finalX} y={finalY} roundIdx={6} isChamp />
@@ -515,19 +515,19 @@ export default function App() {
 
       {/* FOOTER */}
       <div style={{
-        borderTop: "1px solid #1a3a2a", padding: "10px 20px",
+        borderTop: "1px solid #e0e0e0", padding: "10px 20px",
         display: "flex", justifyContent: "space-between", flexWrap: "wrap", gap: 8,
-        background: "#0a1610"
+        background: "#f7f7f7"
       }}>
         <div style={{ display: "flex", gap: 16, alignItems: "center", flexWrap: "wrap" }}>
-          <span style={{ fontSize: 13, color: "#8acca0", fontFamily: "monospace" }}>
+          <span style={{ fontSize: 13, color: "#555", fontFamily: "monospace" }}>
             PENDING: {pendingMatch ? `${pendingMatch.home} vs ${pendingMatch.away} (${pendingMatch.note})` : "All R1 Complete"}
           </span>
-          <span style={{ fontSize: 13, color: "#8acca0", fontFamily: "monospace" }}>
+          <span style={{ fontSize: 13, color: "#555", fontFamily: "monospace" }}>
             NEXT: Second Round Draw TBD
           </span>
         </div>
-        <span style={{ fontSize: 12, color: "#8acca0", fontFamily: "monospace" }}>
+        <span style={{ fontSize: 12, color: "#777", fontFamily: "monospace" }}>
           Data: ESPN &#183; ussoccer.com &#183; usopencup.welchproductsllc.com
         </span>
       </div>
@@ -535,28 +535,28 @@ export default function App() {
       {/* SCRAPE STATUS */}
       {bracket.lastScrape && (
         <div style={{
-          borderTop: "1px solid #1a3a2a", padding: "8px 20px",
-          background: "#080e0a", display: "flex", flexWrap: "wrap", gap: 12, alignItems: "center"
+          borderTop: "1px solid #e0e0e0", padding: "8px 20px",
+          background: "#f0f0f0", display: "flex", flexWrap: "wrap", gap: 12, alignItems: "center"
         }}>
-          <span style={{ fontSize: 12, fontFamily: "monospace", color: "#5a8a6a" }}>
+          <span style={{ fontSize: 12, fontFamily: "monospace", color: "#777" }}>
             LAST SCRAPE: {new Date(bracket.lastScrape).toLocaleString()}
           </span>
           {bracket.scrapeSource && (
-            <span style={{ fontSize: 12, fontFamily: "monospace", color: "#5a8a6a" }}>
+            <span style={{ fontSize: 12, fontFamily: "monospace", color: "#777" }}>
               SOURCE: {bracket.scrapeSource}
             </span>
           )}
           <span style={{ fontSize: 12, fontFamily: "monospace",
-            color: bracket.scrapeStatus === "ok" ? "#4ade80" : bracket.scrapeStatus === "stale" ? "#E08A2C" : "#ff6b6b"
+            color: bracket.scrapeStatus === "ok" ? "#27AE3D" : bracket.scrapeStatus === "stale" ? "#D97706" : "#C2002F"
           }}>
             STATUS: {bracket.scrapeStatus?.toUpperCase()}
           </span>
           {bracket.sourceResults && (
-            <span style={{ fontSize: 11, fontFamily: "monospace", color: "#5a8a6a" }}>
+            <span style={{ fontSize: 11, fontFamily: "monospace", color: "#777" }}>
               {bracket.sourceResults.map(s => (
                 <span key={s.name} style={{
                   marginRight: 8,
-                  color: s.status === "ok" ? "#4ade80" : s.status === "no_data" ? "#E08A2C" : "#ff6b6b"
+                  color: s.status === "ok" ? "#27AE3D" : s.status === "no_data" ? "#D97706" : "#C2002F"
                 }}>
                   {s.name}: {s.status === "ok" ? `${s.matches} matches` : s.status}
                 </span>
@@ -567,26 +567,26 @@ export default function App() {
       )}
 
       {/* SEO CONTENT */}
-      <article style={{ borderTop: "1px solid #1a3a2a", padding: "24px 20px", background: "#0a1610", maxWidth: 900 }}>
-        <h2 style={{ fontSize: 20, fontWeight: 700, color: "#8acca0", marginBottom: 12 }}>
+      <article style={{ borderTop: "1px solid #1a3a2a", padding: "24px 20px", background: "#f7f7f7", maxWidth: 900 }}>
+        <h2 style={{ fontSize: 20, fontWeight: 700, color: "#15192B", marginBottom: 12 }}>
           2026 Lamar Hunt U.S. Open Cup Bracket & Results
         </h2>
-        <p style={{ fontSize: 15, color: "#6a9a7a", lineHeight: 1.7, marginBottom: 12 }}>
+        <p style={{ fontSize: 15, color: "#555", lineHeight: 1.7, marginBottom: 12 }}>
           The 111th edition of the Lamar Hunt U.S. Open Cup is the oldest ongoing soccer competition in the United States,
           open to all levels of men's soccer from Major League Soccer clubs to amateur and semi-professional teams.
           The 2026 tournament features 80 teams competing in a single-elimination format across seven rounds,
           from the First Round in March through the Final on October 21, with a $1 million prize purse.
         </p>
-        <h3 style={{ fontSize: 16, fontWeight: 700, color: "#7aba8a", marginBottom: 8 }}>Tournament Format</h3>
-        <p style={{ fontSize: 15, color: "#6a9a7a", lineHeight: 1.7, marginBottom: 12 }}>
+        <h3 style={{ fontSize: 16, fontWeight: 700, color: "#212844", marginBottom: 8 }}>Tournament Format</h3>
+        <p style={{ fontSize: 15, color: "#555", lineHeight: 1.7, marginBottom: 12 }}>
           The First Round (March 17-19) features 48 professional teams from USL Championship, USL League One,
           and MLS NEXT Pro alongside 32 amateur qualifiers from leagues including USL League Two, UPSL, NPSL, and regional associations.
           The 32 First Round winners advance to the Second Round (March 31 - April 1),
           and the 16 Second Round winners are joined by 16 MLS teams entering in the Round of 32 (April 14-15).
           The tournament continues through the Round of 16, Quarterfinals, Semifinals, and the Final.
         </p>
-        <h3 style={{ fontSize: 16, fontWeight: 700, color: "#7aba8a", marginBottom: 8 }}>First Round Highlights</h3>
-        <p style={{ fontSize: 15, color: "#6a9a7a", lineHeight: 1.7, marginBottom: 12 }}>
+        <h3 style={{ fontSize: 16, fontWeight: 700, color: "#212844", marginBottom: 8 }}>First Round Highlights</h3>
+        <p style={{ fontSize: 15, color: "#555", lineHeight: 1.7, marginBottom: 12 }}>
           The 2026 First Round delivered dramatic results and memorable cupsets across 32 matches.
           Lexington SC recorded the largest margin of victory with a 9-0 demolition of Flower City Union.
           Union Omaha dominated BOHFS St. Louis 8-0, while San Antonio FC cruised past ASC New Stars 6-0.
@@ -594,43 +594,43 @@ export default function App() {
           against higher-division opponents, continuing the tradition of giant-killing that makes the Open Cup
           one of the most exciting tournaments in American soccer.
         </p>
-        <h3 style={{ fontSize: 16, fontWeight: 700, color: "#7aba8a", marginBottom: 8 }}>About This Bracket Tracker</h3>
-        <p style={{ fontSize: 15, color: "#6a9a7a", lineHeight: 1.7, marginBottom: 0 }}>
+        <h3 style={{ fontSize: 16, fontWeight: 700, color: "#212844", marginBottom: 8 }}>About This Bracket Tracker</h3>
+        <p style={{ fontSize: 15, color: "#555", lineHeight: 1.7, marginBottom: 0 }}>
           This interactive bracket displays live scores and results for every round of the 2026 U.S. Open Cup.
           Teams are color-coded by league tier: MLS, USL Championship, USL League One, MLS NEXT Pro, USL League Two, and Amateur.
           Matches marked as cupsets indicate a lower-tier team defeating a higher-tier opponent.
           The bracket updates automatically with the latest results from{" "}
           <a href="https://www.ussoccer.com/us-open-cup/schedule" target="_blank" rel="noopener noreferrer"
-            style={{ color: "#8acca0" }}>ussoccer.com</a>.
+            style={{ color: "#15192B" }}>ussoccer.com</a>.
         </p>
       </article>
 
       {/* HOW IT WORKS */}
-      <section style={{ borderTop: "1px solid #1a3a2a", padding: "24px 20px", background: "#0a1610" }}>
-        <h2 style={{ fontSize: 20, fontWeight: 700, color: "#8acca0", marginBottom: 16 }}>
+      <section style={{ borderTop: "1px solid #1a3a2a", padding: "24px 20px", background: "#f7f7f7" }}>
+        <h2 style={{ fontSize: 20, fontWeight: 700, color: "#15192B", marginBottom: 16 }}>
           How This Website Works
         </h2>
 
         <div style={{ display: "grid", gridTemplateColumns: "repeat(auto-fill, minmax(280px, 1fr))", gap: 14 }}>
           {/* ARCHITECTURE */}
-          <div style={{ background: "#0c1812", border: "1px solid #1a3a2a", borderRadius: 6, padding: 16 }}>
-            <div style={{ fontSize: 12, fontWeight: 800, color: "#4ade80", fontFamily: "monospace", letterSpacing: "0.12em", marginBottom: 8 }}>ARCHITECTURE</div>
-            <p style={{ fontSize: 15, color: "#6a9a7a", lineHeight: 1.7, margin: 0 }}>
-              Full-stack single-page application with a <strong style={{ color: "#8acca0" }}>Python/Flask</strong> backend
-              and <strong style={{ color: "#8acca0" }}>React 18</strong> frontend bundled with <strong style={{ color: "#8acca0" }}>Vite</strong>.
+          <div style={{ background: "#fff", border: "1px solid #e0e0e0", borderRadius: 6, padding: 16 }}>
+            <div style={{ fontSize: 12, fontWeight: 800, color: "#C2002F", fontFamily: "monospace", letterSpacing: "0.12em", marginBottom: 8 }}>ARCHITECTURE</div>
+            <p style={{ fontSize: 15, color: "#555", lineHeight: 1.7, margin: 0 }}>
+              Full-stack single-page application with a <strong style={{ color: "#15192B" }}>Python/Flask</strong> backend
+              and <strong style={{ color: "#15192B" }}>React 18</strong> frontend bundled with <strong style={{ color: "#15192B" }}>Vite</strong>.
               Flask serves both the REST API and the static production build as a single process.
               No database needed - tournament state lives in a single JSON file that the scraper updates and the API serves directly.
             </p>
           </div>
 
           {/* LIVE DATA PIPELINE */}
-          <div style={{ background: "#0c1812", border: "1px solid #1a3a2a", borderRadius: 6, padding: 16 }}>
-            <div style={{ fontSize: 12, fontWeight: 800, color: "#4ade80", fontFamily: "monospace", letterSpacing: "0.12em", marginBottom: 8 }}>LIVE DATA PIPELINE</div>
-            <p style={{ fontSize: 15, color: "#6a9a7a", lineHeight: 1.7, margin: 0 }}>
+          <div style={{ background: "#fff", border: "1px solid #e0e0e0", borderRadius: 6, padding: 16 }}>
+            <div style={{ fontSize: 12, fontWeight: 800, color: "#C2002F", fontFamily: "monospace", letterSpacing: "0.12em", marginBottom: 8 }}>LIVE DATA PIPELINE</div>
+            <p style={{ fontSize: 15, color: "#555", lineHeight: 1.7, margin: 0 }}>
               Scores update automatically through a triple-redundant pipeline.{" "}
-              <strong style={{ color: "#8acca0" }}>Primary:</strong> ESPN public scoreboard API, queried by date range per round.{" "}
-              <strong style={{ color: "#8acca0" }}>Backup:</strong> Wikipedia API, parsing structured wikitext football box templates.{" "}
-              <strong style={{ color: "#8acca0" }}>Fallback:</strong> Direct scraping of ussoccer.com with BeautifulSoup.
+              <strong style={{ color: "#15192B" }}>Primary:</strong> ESPN public scoreboard API, queried by date range per round.{" "}
+              <strong style={{ color: "#15192B" }}>Backup:</strong> Wikipedia API, parsing structured wikitext football box templates.{" "}
+              <strong style={{ color: "#15192B" }}>Fallback:</strong> Direct scraping of ussoccer.com with BeautifulSoup.
               Existing data is never overwritten with fewer matches. APScheduler runs every 2 hours, increasing to every 30 minutes
               during game windows (6 PM - midnight ET). The frontend polls every 5 minutes.
               Per-source health status is tracked and displayed on every scrape cycle.
@@ -638,11 +638,11 @@ export default function App() {
           </div>
 
           {/* BRACKET RENDERING */}
-          <div style={{ background: "#0c1812", border: "1px solid #1a3a2a", borderRadius: 6, padding: 16 }}>
-            <div style={{ fontSize: 12, fontWeight: 800, color: "#4ade80", fontFamily: "monospace", letterSpacing: "0.12em", marginBottom: 8 }}>BRACKET RENDERING</div>
-            <p style={{ fontSize: 15, color: "#6a9a7a", lineHeight: 1.7, margin: 0 }}>
-              The NCAA-style bracket is rendered as <strong style={{ color: "#8acca0" }}>SVG</strong> with{" "}
-              <strong style={{ color: "#8acca0" }}>foreignObject</strong> elements for rich HTML match cells.
+          <div style={{ background: "#fff", border: "1px solid #e0e0e0", borderRadius: 6, padding: 16 }}>
+            <div style={{ fontSize: 12, fontWeight: 800, color: "#C2002F", fontFamily: "monospace", letterSpacing: "0.12em", marginBottom: 8 }}>BRACKET RENDERING</div>
+            <p style={{ fontSize: 15, color: "#555", lineHeight: 1.7, margin: 0 }}>
+              The NCAA-style bracket is rendered as <strong style={{ color: "#15192B" }}>SVG</strong> with{" "}
+              <strong style={{ color: "#15192B" }}>foreignObject</strong> elements for rich HTML match cells.
               Upper and lower brackets are computed independently with L-shaped connector paths joining rounds.
               Cell sizes, fonts, and badge sizes scale progressively from 11px in the First Round up to 16px in the Final.
               Winners propagate forward automatically, and cupset detection compares tier rankings to flag lower-division upsets.
@@ -650,38 +650,38 @@ export default function App() {
           </div>
 
           {/* INTERACTION */}
-          <div style={{ background: "#0c1812", border: "1px solid #1a3a2a", borderRadius: 6, padding: 16 }}>
-            <div style={{ fontSize: 12, fontWeight: 800, color: "#4ade80", fontFamily: "monospace", letterSpacing: "0.12em", marginBottom: 8 }}>INTERACTION</div>
-            <p style={{ fontSize: 15, color: "#6a9a7a", lineHeight: 1.7, margin: 0 }}>
+          <div style={{ background: "#fff", border: "1px solid #e0e0e0", borderRadius: 6, padding: 16 }}>
+            <div style={{ fontSize: 12, fontWeight: 800, color: "#C2002F", fontFamily: "monospace", letterSpacing: "0.12em", marginBottom: 8 }}>INTERACTION</div>
+            <p style={{ fontSize: 15, color: "#555", lineHeight: 1.7, margin: 0 }}>
               Click-and-drag panning on desktop via mouse events bound to the scroll container.
               Pinch-to-zoom on touch devices and Ctrl+Scroll wheel zoom on desktop.
-              Zoom is implemented via CSS <code style={{ color: "#8acca0", fontSize: 14 }}>transform: scale()</code> with
+              Zoom is implemented via CSS <code style={{ color: "#15192B", fontSize: 14 }}>transform: scale()</code> with
               presets from 55% (Fit) to 200% (XXL). Six tier-colored badges classify all 80 teams by league,
               with links to each league's official website in the legend.
             </p>
           </div>
 
           {/* DEPLOYMENT */}
-          <div style={{ background: "#0c1812", border: "1px solid #1a3a2a", borderRadius: 6, padding: 16 }}>
-            <div style={{ fontSize: 12, fontWeight: 800, color: "#4ade80", fontFamily: "monospace", letterSpacing: "0.12em", marginBottom: 8 }}>DEPLOYMENT</div>
-            <p style={{ fontSize: 15, color: "#6a9a7a", lineHeight: 1.7, margin: 0 }}>
-              Containerized in a <strong style={{ color: "#8acca0" }}>multi-stage Docker</strong> build: Node 20 compiles
-              the React frontend, then Python 3.11 serves it via <strong style={{ color: "#8acca0" }}>Gunicorn</strong>.
-              Deployed on <strong style={{ color: "#8acca0" }}>Railway</strong> with automatic deploys from{" "}
-              <code style={{ color: "#8acca0", fontSize: 14 }}>main</code>.
-              Health checks hit <code style={{ color: "#8acca0", fontSize: 14 }}>/api/health</code>.
+          <div style={{ background: "#fff", border: "1px solid #e0e0e0", borderRadius: 6, padding: 16 }}>
+            <div style={{ fontSize: 12, fontWeight: 800, color: "#C2002F", fontFamily: "monospace", letterSpacing: "0.12em", marginBottom: 8 }}>DEPLOYMENT</div>
+            <p style={{ fontSize: 15, color: "#555", lineHeight: 1.7, margin: 0 }}>
+              Containerized in a <strong style={{ color: "#15192B" }}>multi-stage Docker</strong> build: Node 20 compiles
+              the React frontend, then Python 3.11 serves it via <strong style={{ color: "#15192B" }}>Gunicorn</strong>.
+              Deployed on <strong style={{ color: "#15192B" }}>Railway</strong> with automatic deploys from{" "}
+              <code style={{ color: "#15192B", fontSize: 14 }}>main</code>.
+              Health checks hit <code style={{ color: "#15192B", fontSize: 14 }}>/api/health</code>.
               SEO includes Open Graph, Twitter Cards, JSON-LD structured data, FAQ schema, and semantic HTML content.
             </p>
           </div>
 
           {/* MONITORING */}
-          <div style={{ background: "#0c1812", border: "1px solid #1a3a2a", borderRadius: 6, padding: 16 }}>
-            <div style={{ fontSize: 12, fontWeight: 800, color: "#4ade80", fontFamily: "monospace", letterSpacing: "0.12em", marginBottom: 8 }}>MONITORING</div>
-            <p style={{ fontSize: 15, color: "#6a9a7a", lineHeight: 1.7, margin: 0 }}>
+          <div style={{ background: "#fff", border: "1px solid #e0e0e0", borderRadius: 6, padding: 16 }}>
+            <div style={{ fontSize: 12, fontWeight: 800, color: "#C2002F", fontFamily: "monospace", letterSpacing: "0.12em", marginBottom: 8 }}>MONITORING</div>
+            <p style={{ fontSize: 15, color: "#555", lineHeight: 1.7, margin: 0 }}>
               Every scrape cycle tests all three data sources independently and records per-source status
               (success with match count, no data, or error). Results are saved to the data file and displayed
               on the page with color-coded health indicators. When 2 or more sources fail,
-              a <strong style={{ color: "#8acca0" }}>Slack</strong> alert fires to the ops channel with failure details.
+              a <strong style={{ color: "#15192B" }}>Slack</strong> alert fires to the ops channel with failure details.
               Manual scrape and test-alert API endpoints allow on-demand diagnostics without redeploying.
             </p>
           </div>
@@ -691,33 +691,33 @@ export default function App() {
         <div style={{ display: "flex", flexWrap: "wrap", gap: 8, marginTop: 16 }}>
           {["Python 3.11", "Flask", "Gunicorn", "APScheduler", "BeautifulSoup", "React 18", "Vite", "SVG/foreignObject", "Docker", "Railway", "ESPN API", "Wikipedia API", "Slack Webhooks"].map(t => (
             <span key={t} style={{ fontSize: 13, fontWeight: 700, padding: "3px 10px", borderRadius: 3,
-              color: "#4ade80", background: "#4ade8012", border: "1px solid #4ade8025", fontFamily: "monospace" }}>{t}</span>
+              color: "#C2002F", background: "#C2002F0a", border: "1px solid #C2002F25", fontFamily: "monospace" }}>{t}</span>
           ))}
         </div>
 
         {/* Open Source */}
-        <p style={{ fontSize: 15, color: "#6a9a7a", lineHeight: 1.7, marginTop: 14, marginBottom: 0 }}>
-          <strong style={{ color: "#8acca0" }}>Open Source</strong> - The full source code is available at{" "}
+        <p style={{ fontSize: 15, color: "#555", lineHeight: 1.7, marginTop: 14, marginBottom: 0 }}>
+          <strong style={{ color: "#15192B" }}>Open Source</strong> - The full source code is available at{" "}
           <a href="https://github.com/ToddWelch/US-Open-Cup-Bracket" target="_blank" rel="noopener noreferrer"
-            style={{ color: "#8acca0", textDecoration: "none", borderBottom: "1px dashed #8acca044" }}>
+            style={{ color: "#15192B", textDecoration: "none", borderBottom: "1px dashed #8acca044" }}>
             github.com/ToddWelch/US-Open-Cup-Bracket</a>.
         </p>
       </section>
 
       {/* BUILT BY */}
-      <div style={{ borderTop: "1px solid #1a3a2a", padding: "16px 20px", background: "#080e0a", textAlign: "center" }}>
-        <p style={{ fontSize: 15, color: "#6a9a7a", lineHeight: 1.6, margin: 0 }}>
+      <div style={{ borderTop: "1px solid #e0e0e0", padding: "16px 20px", background: "#15192B", textAlign: "center" }}>
+        <p style={{ fontSize: 15, color: "#bfbfbf", lineHeight: 1.6, margin: 0 }}>
           This site was designed and built entirely by{" "}
           <a href="https://claude.ai/code" target="_blank" rel="noopener noreferrer"
-            style={{ color: "#8acca0", textDecoration: "none", borderBottom: "1px dashed #8acca044" }}>Claude Code</a>
+            style={{ color: "#ddd", textDecoration: "none", borderBottom: "1px dashed #ffffff44" }}>Claude Code</a>
           {" "}(AI), prompted by{" "}
           <a href="https://welchcommercesystems.com" target="_blank" rel="noopener noreferrer"
-            style={{ color: "#4ade80", textDecoration: "none", fontWeight: 700, borderBottom: "1px dashed #4ade8044" }}>Welch Commerce Systems</a>.
+            style={{ color: "#fff", textDecoration: "none", fontWeight: 700, borderBottom: "1px dashed #ffffff44" }}>Welch Commerce Systems</a>.
         </p>
-        <p style={{ fontSize: 14, color: "#5a8a6a", marginTop: 6, marginBottom: 0 }}>
+        <p style={{ fontSize: 14, color: "#999", marginTop: 6, marginBottom: 0 }}>
           Want an AI-built app like this for your business?{" "}
           <a href="https://welchcommercesystems.com" target="_blank" rel="noopener noreferrer"
-            style={{ color: "#8acca0", textDecoration: "none", borderBottom: "1px solid #8acca066" }}>
+            style={{ color: "#ddd", textDecoration: "none", borderBottom: "1px solid #ffffff44" }}>
             Let's talk AI assisted automation &amp; development
           </a>
         </p>
