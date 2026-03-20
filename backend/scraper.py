@@ -22,15 +22,18 @@ WIKI_PAGE = "2026_U.S._Open_Cup"
 # Fallback: US Soccer schedule page
 USSOCCER_URL = "https://www.ussoccer.com/us-open-cup/schedule"
 
-# Round metadata with ESPN date ranges and Wikipedia section indices
+# Slack webhook for alerts (set via environment variable)
+SLACK_WEBHOOK_URL = os.environ.get("SLACK_WEBHOOK_URL")
+
+# Round metadata with ESPN date ranges
 ROUND_META = [
-    {"name": "First Round", "schedule": "Mar 17-19", "dates": "20260317-20260325", "wiki_section": 8},
-    {"name": "Second Round", "schedule": "Mar 31 / Apr 1", "dates": "20260331-20260402", "wiki_section": None},
-    {"name": "Round of 32", "schedule": "Apr 14-15", "dates": "20260414-20260416", "wiki_section": None},
-    {"name": "Round of 16", "schedule": "Apr 28-29", "dates": "20260428-20260430", "wiki_section": None},
-    {"name": "Quarterfinals", "schedule": "May 19-20", "dates": "20260519-20260521", "wiki_section": None},
-    {"name": "Semifinals", "schedule": "Sep 15-16", "dates": "20260915-20260917", "wiki_section": None},
-    {"name": "Final", "schedule": "Oct 21", "dates": "20261021-20261022", "wiki_section": None},
+    {"name": "First Round", "schedule": "Mar 17-19", "dates": "20260317-20260325"},
+    {"name": "Second Round", "schedule": "Mar 31 / Apr 1", "dates": "20260331-20260402"},
+    {"name": "Round of 32", "schedule": "Apr 14-15", "dates": "20260414-20260416"},
+    {"name": "Round of 16", "schedule": "Apr 28-29", "dates": "20260428-20260430"},
+    {"name": "Quarterfinals", "schedule": "May 19-20", "dates": "20260519-20260521"},
+    {"name": "Semifinals", "schedule": "Sep 15-16", "dates": "20260915-20260917"},
+    {"name": "Final", "schedule": "Oct 21", "dates": "20261021-20261022"},
 ]
 
 BROWSER_HEADERS = {
@@ -63,35 +66,76 @@ def count_matches(data):
     return total
 
 
+def send_slack_alert(message):
+    """Send an alert to Slack via incoming webhook."""
+    if not SLACK_WEBHOOK_URL:
+        logger.warning("SLACK_WEBHOOK_URL not set, skipping alert")
+        return
+    try:
+        requests.post(SLACK_WEBHOOK_URL, json={"text": message}, timeout=10)
+        logger.info("Slack alert sent")
+    except Exception as e:
+        logger.error("Slack alert failed: %s", e)
+
+
 def scrape_bracket():
     existing = load_existing()
+    now = datetime.now(timezone.utc)
 
-    # Try sources in order: ESPN -> Wikipedia -> ussoccer.com
+    # Try all sources and track results
     sources = [
         ("ESPN", fetch_espn),
         ("Wikipedia", fetch_wikipedia),
         ("ussoccer.com", fetch_ussoccer),
     ]
 
+    source_results = []
     matches = []
     source_used = None
 
     for name, fetcher in sources:
         try:
-            matches = fetcher()
-            if matches:
-                source_used = name
-                logger.info("Using data from %s (%d matches)", name, len(matches))
-                break
+            result = fetcher()
+            if result:
+                source_results.append({"name": name, "status": "ok", "matches": len(result)})
+                if not matches:
+                    matches = result
+                    source_used = name
             else:
-                logger.info("%s returned no data, trying next source", name)
+                source_results.append({"name": name, "status": "no_data", "matches": 0})
         except Exception as e:
-            logger.warning("%s failed: %s, trying next source", name, e)
-            continue
+            source_results.append({"name": name, "status": "error", "error": str(e), "matches": 0})
+            logger.warning("%s failed: %s", name, e)
+
+    # Count failures (error or no_data)
+    failures = sum(1 for s in source_results if s["status"] != "ok")
+
+    # Alert if 2+ sources failed
+    if failures >= 2:
+        failed_names = [s["name"] for s in source_results if s["status"] != "ok"]
+        ok_names = [s["name"] for s in source_results if s["status"] == "ok"]
+        msg = (
+            f":warning: *US Open Cup Bracket - Data Source Alert*\n"
+            f"{failures}/3 sources failed at {now.strftime('%Y-%m-%d %H:%M UTC')}\n"
+            f"Failed: {', '.join(failed_names)}\n"
+            f"Working: {', '.join(ok_names) if ok_names else 'NONE'}\n"
+        )
+        if not ok_names:
+            msg += ":red_circle: *All sources down - bracket data is stale*"
+        send_slack_alert(msg)
+
+    # Build scrape status metadata
+    scrape_info = {
+        "lastScrape": now.isoformat(),
+        "scrapeSource": source_used,
+        "scrapeStatus": "ok" if matches else "stale",
+        "sourceResults": source_results,
+    }
 
     if not matches:
         logger.warning("All sources returned no data")
         if existing:
+            existing.update(scrape_info)
             existing["scrapeStatus"] = "stale"
             save_bracket(existing)
         return
@@ -104,13 +148,15 @@ def scrape_bracket():
             "New data has fewer matches (%d vs %d), keeping existing",
             count_matches(new_data), count_matches(existing)
         )
-        existing["scrapeStatus"] = "stale"
-        save_bracket(existing)
+        if existing:
+            existing.update(scrape_info)
+            existing["scrapeStatus"] = "stale"
+            save_bracket(existing)
         return
 
+    new_data.update(scrape_info)
     new_data["scrapeStatus"] = "ok"
-    new_data["scrapeSource"] = source_used
-    new_data["lastUpdated"] = datetime.now(timezone.utc).isoformat()
+    new_data["lastUpdated"] = now.isoformat()
     save_bracket(new_data)
     logger.info("Bracket updated with %d matches from %s", count_matches(new_data), source_used)
 
@@ -277,10 +323,9 @@ def parse_wiki_matches(wikitext):
     """Parse football box collapsible templates from wikitext."""
     matches = []
 
-    # Split on football box templates
     boxes = re.split(r'\{\{football box collapsible', wikitext)
 
-    for box in boxes[1:]:  # Skip text before first template
+    for box in boxes[1:]:
         try:
             match = parse_wiki_box(box)
             if match:
@@ -295,7 +340,6 @@ def parse_wiki_matches(wikitext):
 def parse_wiki_box(box):
     """Parse a single football box collapsible template."""
     def extract(field):
-        # Match field value to end of line
         pattern = rf'\|\s*{field}\s*=\s*(.+)'
         m = re.search(pattern, box)
         return m.group(1).strip() if m else None
@@ -311,28 +355,21 @@ def parse_wiki_box(box):
     if not team1_raw or not team2_raw:
         return None
 
-    # Clean team names: remove wiki markup [[...]], flags, league tags
     def clean_team(raw):
-        # Remove bold markers
         raw = raw.replace("'''", "")
-        # Remove all {{template}} blocks (flagicon, etc.)
         raw = re.sub(r'\{\{[^}]+\}\}', '', raw)
-        # Extract from [[Display Name]] or [[Link|Display Name]]
         links = re.findall(r'\[\[(?:[^|\]]*\|)?([^\]]+)\]\]', raw)
         if links:
-            # Use the longest match (team name, not state flag)
             name = max(links, key=len)
         else:
             name = raw
-        # Remove league tags in parens like (USL1), (UPSL)
         name = re.sub(r'\([A-Za-z0-9/]+\)', '', name)
         return name.strip()
 
     home = clean_team(team1_raw)
     away = clean_team(team2_raw)
 
-    # Parse score: "2-0", "2–0", "0–1 vo", "1–1 (a.e.t.)"
-    score_clean = score_raw.replace('–', '-').replace('—', '-')
+    score_clean = score_raw.replace('\u2013', '-').replace('\u2014', '-')
     note = None
 
     if "vo" in score_clean.lower() or "w/o" in score_clean.lower() or "ff" in score_clean.lower():
@@ -344,7 +381,6 @@ def parse_wiki_box(box):
 
     score_match = re.search(r'(\d+)\s*-\s*(\d+)', score_clean)
     if not score_match:
-        # Future match with no score
         return {
             "home": home,
             "away": away,

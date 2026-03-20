@@ -514,7 +514,7 @@ export default function App() {
         display: "flex", justifyContent: "space-between", flexWrap: "wrap", gap: 8,
         background: "#0a1610"
       }}>
-        <div style={{ display: "flex", gap: 16, alignItems: "center" }}>
+        <div style={{ display: "flex", gap: 16, alignItems: "center", flexWrap: "wrap" }}>
           <span style={{ fontSize: 13, color: "#8acca0", fontFamily: "monospace" }}>
             PENDING: {pendingMatch ? `${pendingMatch.home} vs ${pendingMatch.away} (${pendingMatch.note})` : "All R1 Complete"}
           </span>
@@ -526,6 +526,40 @@ export default function App() {
           Data: ESPN &#183; ussoccer.com &#183; usopencup.welchproductsllc.com
         </span>
       </div>
+
+      {/* SCRAPE STATUS */}
+      {bracket.lastScrape && (
+        <div style={{
+          borderTop: "1px solid #1a3a2a", padding: "8px 20px",
+          background: "#080e0a", display: "flex", flexWrap: "wrap", gap: 12, alignItems: "center"
+        }}>
+          <span style={{ fontSize: 12, fontFamily: "monospace", color: "#5a8a6a" }}>
+            LAST SCRAPE: {new Date(bracket.lastScrape).toLocaleString()}
+          </span>
+          {bracket.scrapeSource && (
+            <span style={{ fontSize: 12, fontFamily: "monospace", color: "#5a8a6a" }}>
+              SOURCE: {bracket.scrapeSource}
+            </span>
+          )}
+          <span style={{ fontSize: 12, fontFamily: "monospace",
+            color: bracket.scrapeStatus === "ok" ? "#4ade80" : bracket.scrapeStatus === "stale" ? "#E08A2C" : "#ff6b6b"
+          }}>
+            STATUS: {bracket.scrapeStatus?.toUpperCase()}
+          </span>
+          {bracket.sourceResults && (
+            <span style={{ fontSize: 11, fontFamily: "monospace", color: "#5a8a6a" }}>
+              {bracket.sourceResults.map(s => (
+                <span key={s.name} style={{
+                  marginRight: 8,
+                  color: s.status === "ok" ? "#4ade80" : s.status === "no_data" ? "#E08A2C" : "#ff6b6b"
+                }}>
+                  {s.name}: {s.status === "ok" ? `${s.matches} matches` : s.status}
+                </span>
+              ))}
+            </span>
+          )}
+        </div>
+      )}
 
       {/* SEO CONTENT */}
       <article style={{ borderTop: "1px solid #1a3a2a", padding: "24px 20px", background: "#0a1610", maxWidth: 900 }}>
