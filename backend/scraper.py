@@ -10,17 +10,28 @@ logger = logging.getLogger(__name__)
 
 DATA_DIR = os.path.join(os.path.dirname(__file__), "data")
 BRACKET_FILE = os.path.join(DATA_DIR, "bracket.json")
-SCHEDULE_URL = "https://www.ussoccer.com/us-open-cup/schedule"
 
+# ESPN public API for US Open Cup
+ESPN_BASE = "https://site.api.espn.com/apis/site/v2/sports/soccer/usa.open/scoreboard"
+
+# Fallback: US Soccer schedule page
+USSOCCER_URL = "https://www.ussoccer.com/us-open-cup/schedule"
+
+# Date ranges per round for ESPN queries
 ROUND_META = [
-    {"name": "First Round", "schedule": "Mar 17-19"},
-    {"name": "Second Round", "schedule": "Mar 31 / Apr 1"},
-    {"name": "Round of 32", "schedule": "Apr 14-15"},
-    {"name": "Round of 16", "schedule": "Apr 28-29"},
-    {"name": "Quarterfinals", "schedule": "May 19-20"},
-    {"name": "Semifinals", "schedule": "Sep 15-16"},
-    {"name": "Final", "schedule": "Oct 21"},
+    {"name": "First Round", "schedule": "Mar 17-19", "dates": "20260317-20260325"},
+    {"name": "Second Round", "schedule": "Mar 31 / Apr 1", "dates": "20260331-20260402"},
+    {"name": "Round of 32", "schedule": "Apr 14-15", "dates": "20260414-20260416"},
+    {"name": "Round of 16", "schedule": "Apr 28-29", "dates": "20260428-20260430"},
+    {"name": "Quarterfinals", "schedule": "May 19-20", "dates": "20260519-20260521"},
+    {"name": "Semifinals", "schedule": "Sep 15-16", "dates": "20260915-20260917"},
+    {"name": "Final", "schedule": "Oct 21", "dates": "20261021-20261022"},
 ]
+
+BROWSER_HEADERS = {
+    "User-Agent": "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/131.0.0.0 Safari/537.36",
+    "Accept": "text/html,application/xhtml+xml,application/xml;q=0.9,*/*;q=0.8",
+}
 
 
 def load_existing():
@@ -50,36 +61,20 @@ def count_matches(data):
 def scrape_bracket():
     existing = load_existing()
 
-    try:
-        resp = requests.get(SCHEDULE_URL, timeout=15, headers={
-            "User-Agent": "Mozilla/5.0 (compatible; USOpenCupBracket/1.0)"
-        })
-        resp.raise_for_status()
-    except requests.RequestException as e:
-        logger.warning("Scrape failed: %s", e)
-        if existing:
-            existing["scrapeStatus"] = "stale"
-            save_bracket(existing)
-        return
-
-    try:
-        soup = BeautifulSoup(resp.text, "html.parser")
-        matches = parse_matches(soup)
-    except Exception as e:
-        logger.warning("Parse failed: %s", e)
-        if existing:
-            existing["scrapeStatus"] = "error"
-            save_bracket(existing)
-        return
+    # Try ESPN first, then fall back to ussoccer.com
+    matches = fetch_espn()
 
     if not matches:
-        logger.warning("No matches parsed from page")
+        logger.info("ESPN returned no data, trying ussoccer.com fallback")
+        matches = fetch_ussoccer()
+
+    if not matches:
+        logger.warning("All sources returned no data")
         if existing:
             existing["scrapeStatus"] = "stale"
             save_bracket(existing)
         return
 
-    # Build rounds from flat match list
     new_data = build_bracket(matches)
 
     # Never overwrite with less data
@@ -98,16 +93,125 @@ def scrape_bracket():
     logger.info("Bracket updated with %d matches", count_matches(new_data))
 
 
-def parse_matches(soup):
-    """Parse match rows from the US Soccer schedule page.
+# ─── ESPN API (PRIMARY) ───────────────────────────────────────────────
 
-    This is a best-effort parser. The page structure may change,
-    so we handle failures gracefully.
-    """
+def fetch_espn():
+    """Fetch all matches from ESPN's public scoreboard API."""
+    all_matches = []
+
+    for round_info in ROUND_META:
+        try:
+            url = f"{ESPN_BASE}?dates={round_info['dates']}"
+            resp = requests.get(url, timeout=15)
+            resp.raise_for_status()
+            data = resp.json()
+
+            events = data.get("events", [])
+            for event in events:
+                match = parse_espn_event(event)
+                if match:
+                    all_matches.append(match)
+
+            if events:
+                logger.info("ESPN: %d matches for %s", len(events), round_info["name"])
+
+        except requests.RequestException as e:
+            logger.warning("ESPN fetch failed for %s: %s", round_info["name"], e)
+            continue
+        except (KeyError, ValueError) as e:
+            logger.warning("ESPN parse error for %s: %s", round_info["name"], e)
+            continue
+
+    if all_matches:
+        logger.info("ESPN: %d total matches fetched", len(all_matches))
+
+    return all_matches
+
+
+def parse_espn_event(event):
+    """Parse a single ESPN event into our match format."""
+    try:
+        competition = event["competitions"][0]
+        competitors = competition["competitors"]
+
+        # ESPN lists competitors; find home/away
+        home = away = None
+        for team in competitors:
+            entry = {
+                "name": team["team"]["displayName"],
+                "score": int(team.get("score", 0)) if team.get("score") is not None else None,
+            }
+            if team.get("homeAway") == "home":
+                home = entry
+            else:
+                away = entry
+
+        if not home or not away:
+            return None
+
+        status = competition.get("status", {})
+        is_complete = status.get("type", {}).get("completed", False)
+        state = status.get("type", {}).get("name", "")
+
+        # Parse date
+        date_str = event.get("date", "")
+        date_display = None
+        if date_str:
+            try:
+                dt = datetime.fromisoformat(date_str.replace("Z", "+00:00"))
+                date_display = dt.strftime("%B %d")
+            except ValueError:
+                pass
+
+        # Determine note (AET, penalties, etc.)
+        note = None
+        detail = status.get("type", {}).get("detail", "")
+        if "After Extra Time" in detail:
+            note = "AET"
+        elif "Penalties" in detail:
+            note = "PEN"
+        elif not is_complete and state != "STATUS_FINAL":
+            # Future match - show date as note
+            if date_display:
+                note = dt.strftime("%b %d")
+
+        return {
+            "home": home["name"],
+            "away": away["name"],
+            "homeScore": home["score"] if is_complete else None,
+            "awayScore": away["score"] if is_complete else None,
+            "date": date_display,
+            "note": note,
+        }
+
+    except (KeyError, IndexError, TypeError) as e:
+        logger.debug("Skipping ESPN event: %s", e)
+        return None
+
+
+# ─── US SOCCER FALLBACK ───────────────────────────────────────────────
+
+def fetch_ussoccer():
+    """Scrape ussoccer.com schedule page as fallback."""
+    try:
+        resp = requests.get(USSOCCER_URL, timeout=15, headers=BROWSER_HEADERS)
+        resp.raise_for_status()
+    except requests.RequestException as e:
+        logger.warning("ussoccer.com fetch failed: %s", e)
+        return []
+
+    try:
+        soup = BeautifulSoup(resp.text, "html.parser")
+        return parse_ussoccer(soup)
+    except Exception as e:
+        logger.warning("ussoccer.com parse failed: %s", e)
+        return []
+
+
+def parse_ussoccer(soup):
+    """Parse match data from ussoccer.com schedule page."""
     matches = []
 
-    # Look for table rows or match containers
-    # The exact selectors may need adjustment based on the live page
     rows = soup.select("table tbody tr")
     if not rows:
         rows = soup.select(".schedule-list .match, .match-row, [data-match]")
@@ -116,25 +220,26 @@ def parse_matches(soup):
         try:
             cells = row.find_all("td") if row.name == "tr" else None
             if cells and len(cells) >= 3:
-                match = parse_table_row(cells)
+                match = parse_ussoccer_row(cells)
                 if match:
                     matches.append(match)
         except Exception as e:
-            logger.debug("Skipping row: %s", e)
+            logger.debug("Skipping ussoccer row: %s", e)
             continue
+
+    if matches:
+        logger.info("ussoccer.com: %d matches parsed", len(matches))
 
     return matches
 
 
-def parse_table_row(cells):
-    """Parse a table row into a match dict."""
+def parse_ussoccer_row(cells):
+    """Parse a table row from ussoccer.com into a match dict."""
     text = [c.get_text(strip=True) for c in cells]
 
-    # Try to find "Team A X - Y Team B" pattern
     for t in text:
         parts = t.split(" - ")
         if len(parts) == 2:
-            # Attempt to split "Team Name Score" from each side
             left = parts[0].rsplit(" ", 1)
             right = parts[1].split(" ", 1)
             if len(left) == 2 and len(right) == 2:
@@ -155,10 +260,10 @@ def parse_table_row(cells):
     return None
 
 
+# ─── BRACKET BUILDER ──────────────────────────────────────────────────
+
 def build_bracket(matches):
     """Organize flat matches into round structure."""
-    # For now, put all matches into rounds based on count
-    # R1 = first 32, R2 = next 16, etc.
     rounds = []
     idx = 0
     round_sizes = [32, 16, 16, 8, 4, 2, 1]
