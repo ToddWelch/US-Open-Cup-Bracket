@@ -628,6 +628,7 @@ export default function App() {
               <strong style={{ color: "#8acca0" }}>Fallback:</strong> Direct scraping of ussoccer.com with BeautifulSoup.
               Existing data is never overwritten with fewer matches. APScheduler runs every 2 hours, increasing to every 30 minutes
               during game windows (6 PM - midnight ET). The frontend polls every 5 minutes.
+              Per-source health status is tracked and displayed on every scrape cycle.
             </p>
           </div>
 
@@ -667,11 +668,23 @@ export default function App() {
               SEO includes Open Graph, Twitter Cards, JSON-LD structured data, FAQ schema, and semantic HTML content.
             </p>
           </div>
+
+          {/* MONITORING */}
+          <div style={{ background: "#0c1812", border: "1px solid #1a3a2a", borderRadius: 6, padding: 16 }}>
+            <div style={{ fontSize: 12, fontWeight: 800, color: "#4ade80", fontFamily: "monospace", letterSpacing: "0.12em", marginBottom: 8 }}>MONITORING</div>
+            <p style={{ fontSize: 15, color: "#6a9a7a", lineHeight: 1.7, margin: 0 }}>
+              Every scrape cycle tests all three data sources independently and records per-source status
+              (success with match count, no data, or error). Results are saved to the data file and displayed
+              on the page with color-coded health indicators. When 2 or more sources fail,
+              a <strong style={{ color: "#8acca0" }}>Slack</strong> alert fires to the ops channel with failure details.
+              Manual scrape and test-alert API endpoints allow on-demand diagnostics without redeploying.
+            </p>
+          </div>
         </div>
 
         {/* Tech Stack Badges */}
         <div style={{ display: "flex", flexWrap: "wrap", gap: 8, marginTop: 16 }}>
-          {["Python 3.11", "Flask", "Gunicorn", "APScheduler", "BeautifulSoup", "React 18", "Vite", "SVG/foreignObject", "Docker", "Railway", "ESPN API", "Wikipedia API"].map(t => (
+          {["Python 3.11", "Flask", "Gunicorn", "APScheduler", "BeautifulSoup", "React 18", "Vite", "SVG/foreignObject", "Docker", "Railway", "ESPN API", "Wikipedia API", "Slack Webhooks"].map(t => (
             <span key={t} style={{ fontSize: 13, fontWeight: 700, padding: "3px 10px", borderRadius: 3,
               color: "#4ade80", background: "#4ade8012", border: "1px solid #4ade8025", fontFamily: "monospace" }}>{t}</span>
           ))}
