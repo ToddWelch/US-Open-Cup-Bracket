@@ -1,5 +1,6 @@
 import json
 import os
+import re
 import logging
 from datetime import datetime, timezone
 
@@ -14,18 +15,22 @@ BRACKET_FILE = os.path.join(DATA_DIR, "bracket.json")
 # ESPN public API for US Open Cup
 ESPN_BASE = "https://site.api.espn.com/apis/site/v2/sports/soccer/usa.open/scoreboard"
 
+# Wikipedia API for structured match data
+WIKI_API = "https://en.wikipedia.org/w/api.php"
+WIKI_PAGE = "2026_U.S._Open_Cup"
+
 # Fallback: US Soccer schedule page
 USSOCCER_URL = "https://www.ussoccer.com/us-open-cup/schedule"
 
-# Date ranges per round for ESPN queries
+# Round metadata with ESPN date ranges and Wikipedia section indices
 ROUND_META = [
-    {"name": "First Round", "schedule": "Mar 17-19", "dates": "20260317-20260325"},
-    {"name": "Second Round", "schedule": "Mar 31 / Apr 1", "dates": "20260331-20260402"},
-    {"name": "Round of 32", "schedule": "Apr 14-15", "dates": "20260414-20260416"},
-    {"name": "Round of 16", "schedule": "Apr 28-29", "dates": "20260428-20260430"},
-    {"name": "Quarterfinals", "schedule": "May 19-20", "dates": "20260519-20260521"},
-    {"name": "Semifinals", "schedule": "Sep 15-16", "dates": "20260915-20260917"},
-    {"name": "Final", "schedule": "Oct 21", "dates": "20261021-20261022"},
+    {"name": "First Round", "schedule": "Mar 17-19", "dates": "20260317-20260325", "wiki_section": 8},
+    {"name": "Second Round", "schedule": "Mar 31 / Apr 1", "dates": "20260331-20260402", "wiki_section": None},
+    {"name": "Round of 32", "schedule": "Apr 14-15", "dates": "20260414-20260416", "wiki_section": None},
+    {"name": "Round of 16", "schedule": "Apr 28-29", "dates": "20260428-20260430", "wiki_section": None},
+    {"name": "Quarterfinals", "schedule": "May 19-20", "dates": "20260519-20260521", "wiki_section": None},
+    {"name": "Semifinals", "schedule": "Sep 15-16", "dates": "20260915-20260917", "wiki_section": None},
+    {"name": "Final", "schedule": "Oct 21", "dates": "20261021-20261022", "wiki_section": None},
 ]
 
 BROWSER_HEADERS = {
@@ -61,12 +66,28 @@ def count_matches(data):
 def scrape_bracket():
     existing = load_existing()
 
-    # Try ESPN first, then fall back to ussoccer.com
-    matches = fetch_espn()
+    # Try sources in order: ESPN -> Wikipedia -> ussoccer.com
+    sources = [
+        ("ESPN", fetch_espn),
+        ("Wikipedia", fetch_wikipedia),
+        ("ussoccer.com", fetch_ussoccer),
+    ]
 
-    if not matches:
-        logger.info("ESPN returned no data, trying ussoccer.com fallback")
-        matches = fetch_ussoccer()
+    matches = []
+    source_used = None
+
+    for name, fetcher in sources:
+        try:
+            matches = fetcher()
+            if matches:
+                source_used = name
+                logger.info("Using data from %s (%d matches)", name, len(matches))
+                break
+            else:
+                logger.info("%s returned no data, trying next source", name)
+        except Exception as e:
+            logger.warning("%s failed: %s, trying next source", name, e)
+            continue
 
     if not matches:
         logger.warning("All sources returned no data")
@@ -88,9 +109,10 @@ def scrape_bracket():
         return
 
     new_data["scrapeStatus"] = "ok"
+    new_data["scrapeSource"] = source_used
     new_data["lastUpdated"] = datetime.now(timezone.utc).isoformat()
     save_bracket(new_data)
-    logger.info("Bracket updated with %d matches", count_matches(new_data))
+    logger.info("Bracket updated with %d matches from %s", count_matches(new_data), source_used)
 
 
 # ─── ESPN API (PRIMARY) ───────────────────────────────────────────────
@@ -122,9 +144,6 @@ def fetch_espn():
             logger.warning("ESPN parse error for %s: %s", round_info["name"], e)
             continue
 
-    if all_matches:
-        logger.info("ESPN: %d total matches fetched", len(all_matches))
-
     return all_matches
 
 
@@ -134,7 +153,6 @@ def parse_espn_event(event):
         competition = event["competitions"][0]
         competitors = competition["competitors"]
 
-        # ESPN lists competitors; find home/away
         home = away = None
         for team in competitors:
             entry = {
@@ -153,7 +171,6 @@ def parse_espn_event(event):
         is_complete = status.get("type", {}).get("completed", False)
         state = status.get("type", {}).get("name", "")
 
-        # Parse date
         date_str = event.get("date", "")
         date_display = None
         if date_str:
@@ -163,7 +180,6 @@ def parse_espn_event(event):
             except ValueError:
                 pass
 
-        # Determine note (AET, penalties, etc.)
         note = None
         detail = status.get("type", {}).get("detail", "")
         if "After Extra Time" in detail:
@@ -171,7 +187,6 @@ def parse_espn_event(event):
         elif "Penalties" in detail:
             note = "PEN"
         elif not is_complete and state != "STATUS_FINAL":
-            # Future match - show date as note
             if date_display:
                 note = dt.strftime("%b %d")
 
@@ -189,10 +204,173 @@ def parse_espn_event(event):
         return None
 
 
-# ─── US SOCCER FALLBACK ───────────────────────────────────────────────
+# ─── WIKIPEDIA API (BACKUP 2) ─────────────────────────────────────────
+
+def fetch_wikipedia():
+    """Fetch match data from Wikipedia's structured wikitext."""
+    all_matches = []
+
+    # First, get current section list to find round sections
+    try:
+        resp = requests.get(WIKI_API, timeout=15, params={
+            "action": "parse",
+            "page": WIKI_PAGE,
+            "prop": "sections",
+            "format": "json",
+        }, headers={"User-Agent": "USOpenCupBracket/1.0 (usopencup.welchproductsllc.com)"})
+        resp.raise_for_status()
+        sections = resp.json().get("parse", {}).get("sections", [])
+    except Exception as e:
+        logger.warning("Wikipedia sections fetch failed: %s", e)
+        return []
+
+    # Map round names to section indices
+    round_keywords = {
+        "First round": 0,
+        "Second round": 1,
+        "Round of 32": 2,
+        "Round of 16": 3,
+        "Quarterfinals": 4,
+        "Quarter-finals": 4,
+        "Semifinals": 5,
+        "Semi-finals": 5,
+        "Final": 6,
+    }
+
+    section_map = {}
+    for s in sections:
+        for keyword, round_idx in round_keywords.items():
+            if keyword.lower() in s.get("line", "").lower():
+                section_map[round_idx] = s["index"]
+
+    if not section_map:
+        logger.warning("Wikipedia: no round sections found")
+        return []
+
+    # Fetch each round section
+    for round_idx, section_idx in sorted(section_map.items()):
+        try:
+            resp = requests.get(WIKI_API, timeout=15, params={
+                "action": "parse",
+                "page": WIKI_PAGE,
+                "prop": "wikitext",
+                "section": section_idx,
+                "format": "json",
+            }, headers={"User-Agent": "USOpenCupBracket/1.0 (usopencup.welchproductsllc.com)"})
+            resp.raise_for_status()
+
+            wikitext = resp.json().get("parse", {}).get("wikitext", {}).get("*", "")
+            matches = parse_wiki_matches(wikitext)
+
+            if matches:
+                logger.info("Wikipedia: %d matches for %s", len(matches), ROUND_META[round_idx]["name"])
+                all_matches.extend(matches)
+
+        except Exception as e:
+            logger.warning("Wikipedia fetch failed for section %s: %s", section_idx, e)
+            continue
+
+    return all_matches
+
+
+def parse_wiki_matches(wikitext):
+    """Parse football box collapsible templates from wikitext."""
+    matches = []
+
+    # Split on football box templates
+    boxes = re.split(r'\{\{football box collapsible', wikitext)
+
+    for box in boxes[1:]:  # Skip text before first template
+        try:
+            match = parse_wiki_box(box)
+            if match:
+                matches.append(match)
+        except Exception as e:
+            logger.debug("Skipping wiki box: %s", e)
+            continue
+
+    return matches
+
+
+def parse_wiki_box(box):
+    """Parse a single football box collapsible template."""
+    def extract(field):
+        # Match field value to end of line
+        pattern = rf'\|\s*{field}\s*=\s*(.+)'
+        m = re.search(pattern, box)
+        return m.group(1).strip() if m else None
+
+    score_raw = extract("score")
+    if not score_raw:
+        return None
+
+    team1_raw = extract("team1")
+    team2_raw = extract("team2")
+    date_raw = extract("date")
+
+    if not team1_raw or not team2_raw:
+        return None
+
+    # Clean team names: remove wiki markup [[...]], flags, league tags
+    def clean_team(raw):
+        # Remove bold markers
+        raw = raw.replace("'''", "")
+        # Remove all {{template}} blocks (flagicon, etc.)
+        raw = re.sub(r'\{\{[^}]+\}\}', '', raw)
+        # Extract from [[Display Name]] or [[Link|Display Name]]
+        links = re.findall(r'\[\[(?:[^|\]]*\|)?([^\]]+)\]\]', raw)
+        if links:
+            # Use the longest match (team name, not state flag)
+            name = max(links, key=len)
+        else:
+            name = raw
+        # Remove league tags in parens like (USL1), (UPSL)
+        name = re.sub(r'\([A-Za-z0-9/]+\)', '', name)
+        return name.strip()
+
+    home = clean_team(team1_raw)
+    away = clean_team(team2_raw)
+
+    # Parse score: "2-0", "2–0", "0–1 vo", "1–1 (a.e.t.)"
+    score_clean = score_raw.replace('–', '-').replace('—', '-')
+    note = None
+
+    if "vo" in score_clean.lower() or "w/o" in score_clean.lower() or "ff" in score_clean.lower():
+        note = "FF"
+    if "a.e.t" in score_clean.lower() or "aet" in score_clean.lower():
+        note = "AET"
+    if "pen" in score_clean.lower():
+        note = "PEN"
+
+    score_match = re.search(r'(\d+)\s*-\s*(\d+)', score_clean)
+    if not score_match:
+        # Future match with no score
+        return {
+            "home": home,
+            "away": away,
+            "homeScore": None,
+            "awayScore": None,
+            "date": date_raw,
+            "note": date_raw,
+        }
+
+    home_score = int(score_match.group(1))
+    away_score = int(score_match.group(2))
+
+    return {
+        "home": home,
+        "away": away,
+        "homeScore": home_score,
+        "awayScore": away_score,
+        "date": date_raw,
+        "note": note,
+    }
+
+
+# ─── US SOCCER FALLBACK (BACKUP 3) ────────────────────────────────────
 
 def fetch_ussoccer():
-    """Scrape ussoccer.com schedule page as fallback."""
+    """Scrape ussoccer.com schedule page as last resort."""
     try:
         resp = requests.get(USSOCCER_URL, timeout=15, headers=BROWSER_HEADERS)
         resp.raise_for_status()
@@ -226,9 +404,6 @@ def parse_ussoccer(soup):
         except Exception as e:
             logger.debug("Skipping ussoccer row: %s", e)
             continue
-
-    if matches:
-        logger.info("ussoccer.com: %d matches parsed", len(matches))
 
     return matches
 

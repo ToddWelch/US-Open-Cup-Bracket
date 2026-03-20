@@ -554,6 +554,25 @@ export default function App() {
             style={{ color: "#8acca0" }}>ussoccer.com</a>.
         </p>
       </article>
+
+      {/* BUILT BY */}
+      <div style={{ borderTop: "1px solid #1a3a2a", padding: "16px 20px", background: "#080e0a", textAlign: "center" }}>
+        <p style={{ fontSize: 13, color: "#6a9a7a", lineHeight: 1.6, margin: 0 }}>
+          This site was designed and built entirely by{" "}
+          <a href="https://claude.ai/code" target="_blank" rel="noopener noreferrer"
+            style={{ color: "#8acca0", textDecoration: "none", borderBottom: "1px dashed #8acca044" }}>Claude Code</a>
+          {" "}(AI), prompted by{" "}
+          <a href="https://welchcommercesystems.com" target="_blank" rel="noopener noreferrer"
+            style={{ color: "#4ade80", textDecoration: "none", fontWeight: 700, borderBottom: "1px dashed #4ade8044" }}>Welch Commerce Systems</a>.
+        </p>
+        <p style={{ fontSize: 12, color: "#5a8a6a", marginTop: 6, marginBottom: 0 }}>
+          Want an AI-built app like this for your business?{" "}
+          <a href="https://welchcommercesystems.com" target="_blank" rel="noopener noreferrer"
+            style={{ color: "#8acca0", textDecoration: "none", borderBottom: "1px solid #8acca066" }}>
+            Let's talk AI automation &amp; consulting
+          </a>
+        </p>
+      </div>
     </div>
   );
 }
