@@ -556,83 +556,90 @@ export default function App() {
       </article>
 
       {/* HOW IT WORKS */}
-      <article style={{ borderTop: "1px solid #1a3a2a", padding: "24px 20px", background: "#0a1610", maxWidth: 900 }}>
-        <h2 style={{ fontSize: 20, fontWeight: 700, color: "#8acca0", marginBottom: 14 }}>
+      <section style={{ borderTop: "1px solid #1a3a2a", padding: "24px 20px", background: "#0a1610" }}>
+        <h2 style={{ fontSize: 20, fontWeight: 700, color: "#8acca0", marginBottom: 16 }}>
           How This Website Works
         </h2>
 
-        <h3 style={{ fontSize: 16, fontWeight: 700, color: "#7aba8a", marginBottom: 6 }}>Architecture</h3>
-        <p style={{ fontSize: 15, color: "#6a9a7a", lineHeight: 1.7, marginBottom: 12 }}>
-          This is a full-stack single-page application built with a{" "}
-          <strong style={{ color: "#8acca0" }}>Python/Flask</strong> backend and a{" "}
-          <strong style={{ color: "#8acca0" }}>React</strong> frontend bundled with{" "}
-          <strong style={{ color: "#8acca0" }}>Vite</strong>.
-          Flask serves both the REST API and the static production build as a single process.
-          No database is needed. Tournament state is stored in a single JSON file that the scraper
-          updates and the API serves directly.
-        </p>
+        <div style={{ display: "grid", gridTemplateColumns: "repeat(auto-fill, minmax(280px, 1fr))", gap: 14 }}>
+          {/* ARCHITECTURE */}
+          <div style={{ background: "#0c1812", border: "1px solid #1a3a2a", borderRadius: 6, padding: 16 }}>
+            <div style={{ fontSize: 12, fontWeight: 800, color: "#4ade80", fontFamily: "monospace", letterSpacing: "0.12em", marginBottom: 8 }}>ARCHITECTURE</div>
+            <p style={{ fontSize: 15, color: "#6a9a7a", lineHeight: 1.7, margin: 0 }}>
+              Full-stack single-page application with a <strong style={{ color: "#8acca0" }}>Python/Flask</strong> backend
+              and <strong style={{ color: "#8acca0" }}>React 18</strong> frontend bundled with <strong style={{ color: "#8acca0" }}>Vite</strong>.
+              Flask serves both the REST API and the static production build as a single process.
+              No database needed - tournament state lives in a single JSON file that the scraper updates and the API serves directly.
+            </p>
+          </div>
 
-        <h3 style={{ fontSize: 16, fontWeight: 700, color: "#7aba8a", marginBottom: 6 }}>Live Data Pipeline</h3>
-        <p style={{ fontSize: 15, color: "#6a9a7a", lineHeight: 1.7, marginBottom: 12 }}>
-          Scores update automatically through a multi-source data pipeline with built-in redundancy:
-        </p>
-        <ul style={{ fontSize: 15, color: "#6a9a7a", lineHeight: 1.8, marginBottom: 12, paddingLeft: 20 }}>
-          <li><strong style={{ color: "#8acca0" }}>Primary:</strong> ESPN public scoreboard API, queried by date range per round</li>
-          <li><strong style={{ color: "#8acca0" }}>Backup:</strong> Wikipedia API, parsing structured wikitext football box templates</li>
-          <li><strong style={{ color: "#8acca0" }}>Fallback:</strong> Direct scraping of ussoccer.com with BeautifulSoup</li>
-          <li><strong style={{ color: "#8acca0" }}>Safety net:</strong> Existing data is never overwritten with fewer matches</li>
-        </ul>
-        <p style={{ fontSize: 15, color: "#6a9a7a", lineHeight: 1.7, marginBottom: 12 }}>
-          An <strong style={{ color: "#8acca0" }}>APScheduler</strong> cron runs the pipeline every 2 hours by default,
-          increasing to every 30 minutes during game windows (6 PM - midnight ET).
-          The frontend polls the API every 5 minutes and re-renders when new data arrives.
-        </p>
+          {/* LIVE DATA PIPELINE */}
+          <div style={{ background: "#0c1812", border: "1px solid #1a3a2a", borderRadius: 6, padding: 16 }}>
+            <div style={{ fontSize: 12, fontWeight: 800, color: "#4ade80", fontFamily: "monospace", letterSpacing: "0.12em", marginBottom: 8 }}>LIVE DATA PIPELINE</div>
+            <p style={{ fontSize: 15, color: "#6a9a7a", lineHeight: 1.7, margin: 0 }}>
+              Scores update automatically through a triple-redundant pipeline.{" "}
+              <strong style={{ color: "#8acca0" }}>Primary:</strong> ESPN public scoreboard API, queried by date range per round.{" "}
+              <strong style={{ color: "#8acca0" }}>Backup:</strong> Wikipedia API, parsing structured wikitext football box templates.{" "}
+              <strong style={{ color: "#8acca0" }}>Fallback:</strong> Direct scraping of ussoccer.com with BeautifulSoup.
+              Existing data is never overwritten with fewer matches. APScheduler runs every 2 hours, increasing to every 30 minutes
+              during game windows (6 PM - midnight ET). The frontend polls every 5 minutes.
+            </p>
+          </div>
 
-        <h3 style={{ fontSize: 16, fontWeight: 700, color: "#7aba8a", marginBottom: 6 }}>Bracket Rendering</h3>
-        <p style={{ fontSize: 15, color: "#6a9a7a", lineHeight: 1.7, marginBottom: 12 }}>
-          The bracket is rendered as an{" "}
-          <strong style={{ color: "#8acca0" }}>SVG</strong> with{" "}
-          <strong style={{ color: "#8acca0" }}>foreignObject</strong> elements for HTML match cells.
-          Upper and lower brackets are computed independently, with L-shaped connector paths joining rounds.
-          Cell sizes, fonts, and badge sizes scale progressively from 11px in the First Round up to 16px in the Final.
-          Winners propagate forward automatically, so completed rounds populate the next round's matchups.
-          Cupset detection compares tier rankings and flags when a lower-division team defeats a higher-division opponent.
-        </p>
+          {/* BRACKET RENDERING */}
+          <div style={{ background: "#0c1812", border: "1px solid #1a3a2a", borderRadius: 6, padding: 16 }}>
+            <div style={{ fontSize: 12, fontWeight: 800, color: "#4ade80", fontFamily: "monospace", letterSpacing: "0.12em", marginBottom: 8 }}>BRACKET RENDERING</div>
+            <p style={{ fontSize: 15, color: "#6a9a7a", lineHeight: 1.7, margin: 0 }}>
+              The NCAA-style bracket is rendered as <strong style={{ color: "#8acca0" }}>SVG</strong> with{" "}
+              <strong style={{ color: "#8acca0" }}>foreignObject</strong> elements for rich HTML match cells.
+              Upper and lower brackets are computed independently with L-shaped connector paths joining rounds.
+              Cell sizes, fonts, and badge sizes scale progressively from 11px in the First Round up to 16px in the Final.
+              Winners propagate forward automatically, and cupset detection compares tier rankings to flag lower-division upsets.
+            </p>
+          </div>
 
-        <h3 style={{ fontSize: 16, fontWeight: 700, color: "#7aba8a", marginBottom: 6 }}>Interaction</h3>
-        <p style={{ fontSize: 15, color: "#6a9a7a", lineHeight: 1.7, marginBottom: 12 }}>
-          The bracket supports click-and-drag panning on desktop (mouse events bound to the scroll container),
-          pinch-to-zoom on touch devices, and Ctrl+Scroll wheel zoom.
-          Zoom is implemented via CSS <code style={{ color: "#8acca0", fontSize: 14 }}>transform: scale()</code> on
-          the bracket container, with presets from 55% (Fit) to 200% (XXL).
-        </p>
+          {/* INTERACTION */}
+          <div style={{ background: "#0c1812", border: "1px solid #1a3a2a", borderRadius: 6, padding: 16 }}>
+            <div style={{ fontSize: 12, fontWeight: 800, color: "#4ade80", fontFamily: "monospace", letterSpacing: "0.12em", marginBottom: 8 }}>INTERACTION</div>
+            <p style={{ fontSize: 15, color: "#6a9a7a", lineHeight: 1.7, margin: 0 }}>
+              Click-and-drag panning on desktop via mouse events bound to the scroll container.
+              Pinch-to-zoom on touch devices and Ctrl+Scroll wheel zoom on desktop.
+              Zoom is implemented via CSS <code style={{ color: "#8acca0", fontSize: 14 }}>transform: scale()</code> with
+              presets from 55% (Fit) to 200% (XXL). Six tier-colored badges classify all 80 teams by league,
+              with links to each league's official website in the legend.
+            </p>
+          </div>
 
-        <h3 style={{ fontSize: 16, fontWeight: 700, color: "#7aba8a", marginBottom: 6 }}>Deployment</h3>
-        <p style={{ fontSize: 15, color: "#6a9a7a", lineHeight: 1.7, marginBottom: 12 }}>
-          The app is containerized in a{" "}
-          <strong style={{ color: "#8acca0" }}>multi-stage Docker</strong> build: Node 20 compiles the React frontend,
-          then Python 3.11 serves it via <strong style={{ color: "#8acca0" }}>Gunicorn</strong>.
-          Deployed on <strong style={{ color: "#8acca0" }}>Railway</strong> with automatic deploys from the{" "}
-          <code style={{ color: "#8acca0", fontSize: 14 }}>main</code> branch.
-          Health checks hit <code style={{ color: "#8acca0", fontSize: 14 }}>/api/health</code>.
-        </p>
+          {/* DEPLOYMENT */}
+          <div style={{ background: "#0c1812", border: "1px solid #1a3a2a", borderRadius: 6, padding: 16 }}>
+            <div style={{ fontSize: 12, fontWeight: 800, color: "#4ade80", fontFamily: "monospace", letterSpacing: "0.12em", marginBottom: 8 }}>DEPLOYMENT</div>
+            <p style={{ fontSize: 15, color: "#6a9a7a", lineHeight: 1.7, margin: 0 }}>
+              Containerized in a <strong style={{ color: "#8acca0" }}>multi-stage Docker</strong> build: Node 20 compiles
+              the React frontend, then Python 3.11 serves it via <strong style={{ color: "#8acca0" }}>Gunicorn</strong>.
+              Deployed on <strong style={{ color: "#8acca0" }}>Railway</strong> with automatic deploys from{" "}
+              <code style={{ color: "#8acca0", fontSize: 14 }}>main</code>.
+              Health checks hit <code style={{ color: "#8acca0", fontSize: 14 }}>/api/health</code>.
+              SEO includes Open Graph, Twitter Cards, JSON-LD structured data, FAQ schema, and semantic HTML content.
+            </p>
+          </div>
+        </div>
 
-        <h3 style={{ fontSize: 16, fontWeight: 700, color: "#7aba8a", marginBottom: 6 }}>Tech Stack</h3>
-        <div style={{ display: "flex", flexWrap: "wrap", gap: 6, marginBottom: 12 }}>
+        {/* Tech Stack Badges */}
+        <div style={{ display: "flex", flexWrap: "wrap", gap: 8, marginTop: 16 }}>
           {["Python 3.11", "Flask", "Gunicorn", "APScheduler", "BeautifulSoup", "React 18", "Vite", "SVG/foreignObject", "Docker", "Railway", "ESPN API", "Wikipedia API"].map(t => (
             <span key={t} style={{ fontSize: 13, fontWeight: 700, padding: "3px 10px", borderRadius: 3,
               color: "#4ade80", background: "#4ade8012", border: "1px solid #4ade8025", fontFamily: "monospace" }}>{t}</span>
           ))}
         </div>
 
-        <h3 style={{ fontSize: 16, fontWeight: 700, color: "#7aba8a", marginBottom: 6 }}>Open Source</h3>
-        <p style={{ fontSize: 15, color: "#6a9a7a", lineHeight: 1.7, marginBottom: 0 }}>
-          The full source code is available at{" "}
+        {/* Open Source */}
+        <p style={{ fontSize: 15, color: "#6a9a7a", lineHeight: 1.7, marginTop: 14, marginBottom: 0 }}>
+          <strong style={{ color: "#8acca0" }}>Open Source</strong> - The full source code is available at{" "}
           <a href="https://github.com/ToddWelch/US-Open-Cup-Bracket" target="_blank" rel="noopener noreferrer"
             style={{ color: "#8acca0", textDecoration: "none", borderBottom: "1px dashed #8acca044" }}>
             github.com/ToddWelch/US-Open-Cup-Bracket</a>.
         </p>
-      </article>
+      </section>
 
       {/* BUILT BY */}
       <div style={{ borderTop: "1px solid #1a3a2a", padding: "16px 20px", background: "#080e0a", textAlign: "center" }}>
