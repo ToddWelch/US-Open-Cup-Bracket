@@ -281,8 +281,10 @@ function useDragScroll(ref) {
 export default function App() {
   const [bracket, setBracket] = useState(null);
   const [error, setError] = useState(null);
+  const isMobile = window.innerWidth <= 768;
+  const [headerExpanded, setHeaderExpanded] = useState(!isMobile);
   const bracketRef = useRef(null);
-  const [zoom, setZoom] = useZoom(bracketRef, 1.0);
+  const [zoom, setZoom] = useZoom(bracketRef, isMobile ? 0.55 : 1.0);
   useDragScroll(bracketRef);
 
   const fetchBracket = useCallback(async () => {
@@ -390,55 +392,64 @@ export default function App() {
           </div>
         </div>
 
-        {/* Tier Legend */}
-        <div style={{ display: "flex", gap: 10, marginTop: 8, flexWrap: "wrap" }}>
-          {Object.entries(TIERS).map(([key, t]) => {
-            const info = {
-              MLS: { name: "Major League Soccer", url: "https://www.mlssoccer.com" },
-              "USL-C": { name: "USL Championship", url: "https://www.uslchampionship.com" },
-              USL1: { name: "USL League One", url: "https://www.uslleagueone.com" },
-              MLSNP: { name: "MLS Next Pro", url: "https://www.mlsnextpro.com" },
-              USL2: { name: "USL League Two", url: "https://www.uslleaguetwo.com" },
-              AM: { name: "Amateur", url: null },
-            }[key];
-            return (
-              <div key={key} style={{ display: "flex", alignItems: "center", gap: 3 }}>
-                <span style={{ fontSize: 12, fontWeight: 700, padding: "1px 5px", borderRadius: 2, color: t.color, background: t.bg, fontFamily: "monospace", border: `1px solid ${t.color}25` }}>{t.label}</span>
-                {info.url ? (
-                  <a href={info.url} target="_blank" rel="noopener noreferrer"
-                    style={{ fontSize: 13, color: "#8acca0", textDecoration: "none", borderBottom: "1px dashed #8acca044" }}>{info.name}</a>
-                ) : (
-                  <span style={{ fontSize: 13, color: "#8acca0" }}>{info.name}</span>
-                )}
-              </div>
-            );
-          })}
-        </div>
+        {/* Toggle for mobile */}
+        <button onClick={() => setHeaderExpanded(e => !e)} style={{
+          background: "transparent", border: "1px solid #1a3a2a", borderRadius: 3,
+          padding: "4px 12px", cursor: "pointer", marginTop: 8,
+          color: "#8acca0", fontSize: 12, fontWeight: 700, fontFamily: "monospace",
+        }}>{headerExpanded ? "Hide Controls" : "Show Legend & Zoom"}</button>
 
-        {/* Zoom Controls */}
-        <div style={{ display: "flex", alignItems: "center", gap: 8, marginTop: 10 }}>
-          <span style={{ fontSize: 13, color: "#8acca0", fontFamily: "monospace", letterSpacing: "0.1em" }}>ZOOM</span>
-          <input type="range" min={30} max={200} value={Math.round(zoom * 100)}
-            onChange={e => setZoom(Number(e.target.value) / 100)}
-            style={{ width: 100, accentColor: "#4ade80", height: 4, cursor: "pointer" }} />
-          <span style={{ fontSize: 14, fontFamily: "monospace", color: "#4ade80", minWidth: 36 }}>{Math.round(zoom * 100)}%</span>
-          <div style={{ display: "flex", gap: 3, marginLeft: 4 }}>
-            {zoomPresets.map(p => (
-              <button key={p.label} onClick={() => setZoom(p.val)} style={{
-                background: Math.abs(zoom - p.val) < 0.05 ? "#4ade8018" : "transparent",
-                border: Math.abs(zoom - p.val) < 0.05 ? "1px solid #4ade8040" : "1px solid #1a3a2a",
-                borderRadius: 3, padding: "2px 7px", cursor: "pointer",
-                color: Math.abs(zoom - p.val) < 0.05 ? "#4ade80" : "#3e6e4e",
-                fontSize: 12, fontWeight: 700, fontFamily: "monospace",
-              }}>{p.label}</button>
-            ))}
+        {headerExpanded && <>
+          {/* Tier Legend */}
+          <div style={{ display: "flex", gap: 10, marginTop: 8, flexWrap: "wrap" }}>
+            {Object.entries(TIERS).map(([key, t]) => {
+              const info = {
+                MLS: { name: "Major League Soccer", url: "https://www.mlssoccer.com" },
+                "USL-C": { name: "USL Championship", url: "https://www.uslchampionship.com" },
+                USL1: { name: "USL League One", url: "https://www.uslleagueone.com" },
+                MLSNP: { name: "MLS Next Pro", url: "https://www.mlsnextpro.com" },
+                USL2: { name: "USL League Two", url: "https://www.uslleaguetwo.com" },
+                AM: { name: "Amateur", url: null },
+              }[key];
+              return (
+                <div key={key} style={{ display: "flex", alignItems: "center", gap: 3 }}>
+                  <span style={{ fontSize: 12, fontWeight: 700, padding: "1px 5px", borderRadius: 2, color: t.color, background: t.bg, fontFamily: "monospace", border: `1px solid ${t.color}25` }}>{t.label}</span>
+                  {info.url ? (
+                    <a href={info.url} target="_blank" rel="noopener noreferrer"
+                      style={{ fontSize: 13, color: "#8acca0", textDecoration: "none", borderBottom: "1px dashed #8acca044" }}>{info.name}</a>
+                  ) : (
+                    <span style={{ fontSize: 13, color: "#8acca0" }}>{info.name}</span>
+                  )}
+                </div>
+              );
+            })}
           </div>
-          <span style={{ fontSize: 12, color: "#8acca0", fontFamily: "monospace", marginLeft: 8 }}>Ctrl+Scroll or Pinch to zoom</span>
-        </div>
+
+          {/* Zoom Controls */}
+          <div style={{ display: "flex", alignItems: "center", gap: 8, marginTop: 10, flexWrap: "wrap" }}>
+            <span style={{ fontSize: 13, color: "#8acca0", fontFamily: "monospace", letterSpacing: "0.1em" }}>ZOOM</span>
+            <input type="range" min={30} max={200} value={Math.round(zoom * 100)}
+              onChange={e => setZoom(Number(e.target.value) / 100)}
+              style={{ width: 100, accentColor: "#4ade80", height: 4, cursor: "pointer" }} />
+            <span style={{ fontSize: 14, fontFamily: "monospace", color: "#4ade80", minWidth: 36 }}>{Math.round(zoom * 100)}%</span>
+            <div style={{ display: "flex", gap: 3, marginLeft: 4 }}>
+              {zoomPresets.map(p => (
+                <button key={p.label} onClick={() => setZoom(p.val)} style={{
+                  background: Math.abs(zoom - p.val) < 0.05 ? "#4ade8018" : "transparent",
+                  border: Math.abs(zoom - p.val) < 0.05 ? "1px solid #4ade8040" : "1px solid #1a3a2a",
+                  borderRadius: 3, padding: "2px 7px", cursor: "pointer",
+                  color: Math.abs(zoom - p.val) < 0.05 ? "#4ade80" : "#3e6e4e",
+                  fontSize: 12, fontWeight: 700, fontFamily: "monospace",
+                }}>{p.label}</button>
+              ))}
+            </div>
+            <span style={{ fontSize: 12, color: "#8acca0", fontFamily: "monospace", marginLeft: 8 }}>Ctrl+Scroll or Pinch to zoom</span>
+          </div>
+        </>}
       </div>
 
       {/* BRACKET */}
-      <div ref={bracketRef} style={{ overflowX: "auto", overflowY: "auto", WebkitOverflowScrolling: "touch", cursor: "grab", userSelect: "none" }}>
+      <div ref={bracketRef} style={{ overflowX: "auto", overflowY: "visible", WebkitOverflowScrolling: "touch", cursor: "grab", userSelect: "none" }}>
         <div style={{
           transform: `scale(${zoom})`, transformOrigin: "top left",
           minWidth: svgW, padding: "0 20px",
