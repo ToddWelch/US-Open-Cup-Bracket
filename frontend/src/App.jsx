@@ -451,9 +451,13 @@ export default function App() {
       {/* BRACKET */}
       <div ref={bracketRef} style={{ overflowX: "auto", overflowY: "visible", WebkitOverflowScrolling: "touch", cursor: "grab", userSelect: "none" }}>
         <div style={{
+          width: `${(svgW + 40) * zoom}px`,
+          height: `${(totalH + 30) * zoom}px`,
+        }}>
+        <div style={{
           transform: `scale(${zoom})`, transformOrigin: "top left",
-          minWidth: svgW, padding: "0 20px",
           width: `${svgW + 40}px`,
+          padding: "0 20px",
         }}>
           {/* Round Column Headers */}
           <div style={{ display: "flex", paddingTop: 10, paddingBottom: 4 }}>
@@ -505,6 +509,7 @@ export default function App() {
             {/* Trophy */}
             <text x={finalX + FINAL_SIZE.cw / 2} y={finalY - 12} textAnchor="middle" fontSize={26}>&#127942;</text>
           </svg>
+        </div>
         </div>
       </div>
 
