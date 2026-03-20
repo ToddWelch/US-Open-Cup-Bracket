@@ -4,7 +4,7 @@ This file provides guidance to Claude Code (claude.ai/code) when working with co
 
 ## Project Overview
 
-A Flask + React single-page app displaying the 2026 Lamar Hunt U.S. Open Cup bracket in an NCAA-style tournament tree. Scores auto-update via scraping ussoccer.com. Deployed on Railway at `usopen.welchproductsllc.com`.
+A Flask + React single-page app displaying the 2026 Lamar Hunt U.S. Open Cup bracket in an NCAA-style tournament tree. Scores auto-update via scraping ussoccer.com. Deployed on Railway at `usopencup.welchproductsllc.com`.
 
 ## Architecture
 

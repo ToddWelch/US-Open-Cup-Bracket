@@ -512,7 +512,7 @@ export default function App() {
           </span>
         </div>
         <span style={{ fontSize: 12, color: "#8acca0", fontFamily: "monospace" }}>
-          Source: ussoccer.com &#183; welchproductsllc.com
+          Source: ussoccer.com &#183; usopencup.welchproductsllc.com
         </span>
       </div>
 
