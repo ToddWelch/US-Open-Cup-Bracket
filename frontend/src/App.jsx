@@ -555,6 +555,85 @@ export default function App() {
         </p>
       </article>
 
+      {/* HOW IT WORKS */}
+      <article style={{ borderTop: "1px solid #1a3a2a", padding: "24px 20px", background: "#0a1610", maxWidth: 900 }}>
+        <h2 style={{ fontSize: 16, fontWeight: 700, color: "#8acca0", marginBottom: 14 }}>
+          How This Website Works
+        </h2>
+
+        <h3 style={{ fontSize: 14, fontWeight: 700, color: "#7aba8a", marginBottom: 6 }}>Architecture</h3>
+        <p style={{ fontSize: 13, color: "#6a9a7a", lineHeight: 1.7, marginBottom: 12 }}>
+          This is a full-stack single-page application built with a{" "}
+          <strong style={{ color: "#8acca0" }}>Python/Flask</strong> backend and a{" "}
+          <strong style={{ color: "#8acca0" }}>React</strong> frontend bundled with{" "}
+          <strong style={{ color: "#8acca0" }}>Vite</strong>.
+          Flask serves both the REST API and the static production build as a single process.
+          No database is needed. Tournament state is stored in a single JSON file that the scraper
+          updates and the API serves directly.
+        </p>
+
+        <h3 style={{ fontSize: 14, fontWeight: 700, color: "#7aba8a", marginBottom: 6 }}>Live Data Pipeline</h3>
+        <p style={{ fontSize: 13, color: "#6a9a7a", lineHeight: 1.7, marginBottom: 12 }}>
+          Scores update automatically through a multi-source data pipeline with built-in redundancy:
+        </p>
+        <ul style={{ fontSize: 13, color: "#6a9a7a", lineHeight: 1.8, marginBottom: 12, paddingLeft: 20 }}>
+          <li><strong style={{ color: "#8acca0" }}>Primary:</strong> ESPN public scoreboard API, queried by date range per round</li>
+          <li><strong style={{ color: "#8acca0" }}>Backup:</strong> Wikipedia API, parsing structured wikitext football box templates</li>
+          <li><strong style={{ color: "#8acca0" }}>Fallback:</strong> Direct scraping of ussoccer.com with BeautifulSoup</li>
+          <li><strong style={{ color: "#8acca0" }}>Safety net:</strong> Existing data is never overwritten with fewer matches</li>
+        </ul>
+        <p style={{ fontSize: 13, color: "#6a9a7a", lineHeight: 1.7, marginBottom: 12 }}>
+          An <strong style={{ color: "#8acca0" }}>APScheduler</strong> cron runs the pipeline every 2 hours by default,
+          increasing to every 30 minutes during game windows (6 PM - midnight ET).
+          The frontend polls the API every 5 minutes and re-renders when new data arrives.
+        </p>
+
+        <h3 style={{ fontSize: 14, fontWeight: 700, color: "#7aba8a", marginBottom: 6 }}>Bracket Rendering</h3>
+        <p style={{ fontSize: 13, color: "#6a9a7a", lineHeight: 1.7, marginBottom: 12 }}>
+          The bracket is rendered as an{" "}
+          <strong style={{ color: "#8acca0" }}>SVG</strong> with{" "}
+          <strong style={{ color: "#8acca0" }}>foreignObject</strong> elements for HTML match cells.
+          Upper and lower brackets are computed independently, with L-shaped connector paths joining rounds.
+          Cell sizes, fonts, and badge sizes scale progressively from 11px in the First Round up to 16px in the Final.
+          Winners propagate forward automatically, so completed rounds populate the next round's matchups.
+          Cupset detection compares tier rankings and flags when a lower-division team defeats a higher-division opponent.
+        </p>
+
+        <h3 style={{ fontSize: 14, fontWeight: 700, color: "#7aba8a", marginBottom: 6 }}>Interaction</h3>
+        <p style={{ fontSize: 13, color: "#6a9a7a", lineHeight: 1.7, marginBottom: 12 }}>
+          The bracket supports click-and-drag panning on desktop (mouse events bound to the scroll container),
+          pinch-to-zoom on touch devices, and Ctrl+Scroll wheel zoom.
+          Zoom is implemented via CSS <code style={{ color: "#8acca0", fontSize: 12 }}>transform: scale()</code> on
+          the bracket container, with presets from 55% (Fit) to 200% (XXL).
+        </p>
+
+        <h3 style={{ fontSize: 14, fontWeight: 700, color: "#7aba8a", marginBottom: 6 }}>Deployment</h3>
+        <p style={{ fontSize: 13, color: "#6a9a7a", lineHeight: 1.7, marginBottom: 12 }}>
+          The app is containerized in a{" "}
+          <strong style={{ color: "#8acca0" }}>multi-stage Docker</strong> build: Node 20 compiles the React frontend,
+          then Python 3.11 serves it via <strong style={{ color: "#8acca0" }}>Gunicorn</strong>.
+          Deployed on <strong style={{ color: "#8acca0" }}>Railway</strong> with automatic deploys from the{" "}
+          <code style={{ color: "#8acca0", fontSize: 12 }}>main</code> branch.
+          Health checks hit <code style={{ color: "#8acca0", fontSize: 12 }}>/api/health</code>.
+        </p>
+
+        <h3 style={{ fontSize: 14, fontWeight: 700, color: "#7aba8a", marginBottom: 6 }}>Tech Stack</h3>
+        <div style={{ display: "flex", flexWrap: "wrap", gap: 6, marginBottom: 12 }}>
+          {["Python 3.11", "Flask", "Gunicorn", "APScheduler", "BeautifulSoup", "React 18", "Vite", "SVG/foreignObject", "Docker", "Railway", "ESPN API", "Wikipedia API"].map(t => (
+            <span key={t} style={{ fontSize: 11, fontWeight: 700, padding: "2px 8px", borderRadius: 3,
+              color: "#4ade80", background: "#4ade8012", border: "1px solid #4ade8025", fontFamily: "monospace" }}>{t}</span>
+          ))}
+        </div>
+
+        <h3 style={{ fontSize: 14, fontWeight: 700, color: "#7aba8a", marginBottom: 6 }}>Open Source</h3>
+        <p style={{ fontSize: 13, color: "#6a9a7a", lineHeight: 1.7, marginBottom: 0 }}>
+          The full source code is available at{" "}
+          <a href="https://github.com/ToddWelch/US-Open-Cup-Bracket" target="_blank" rel="noopener noreferrer"
+            style={{ color: "#8acca0", textDecoration: "none", borderBottom: "1px dashed #8acca044" }}>
+            github.com/ToddWelch/US-Open-Cup-Bracket</a>.
+        </p>
+      </article>
+
       {/* BUILT BY */}
       <div style={{ borderTop: "1px solid #1a3a2a", padding: "16px 20px", background: "#080e0a", textAlign: "center" }}>
         <p style={{ fontSize: 13, color: "#6a9a7a", lineHeight: 1.6, margin: 0 }}>
