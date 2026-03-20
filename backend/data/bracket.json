@@ -1,0 +1,298 @@
+{
+  "lastUpdated": "2026-03-20T00:00:00Z",
+  "scrapeStatus": "stale",
+  "rounds": [
+    {
+      "name": "First Round",
+      "schedule": "Mar 17-19",
+      "matches": [
+        {
+          "home": "Richmond Kickers",
+          "away": "Northern Virginia FC",
+          "homeScore": 2,
+          "awayScore": 0,
+          "date": "March 17",
+          "note": null
+        },
+        {
+          "home": "Rhode Island FC",
+          "away": "CD Faialense",
+          "homeScore": 4,
+          "awayScore": 0,
+          "date": "March 17",
+          "note": null
+        },
+        {
+          "home": "Vermont Green FC",
+          "away": "Portland Hearts of Pine",
+          "homeScore": 1,
+          "awayScore": 0,
+          "date": "March 17",
+          "note": null
+        },
+        {
+          "home": "Detroit City FC",
+          "away": "Michigan Rangers",
+          "homeScore": 5,
+          "awayScore": 1,
+          "date": "March 17",
+          "note": null
+        },
+        {
+          "home": "West Chester United SC",
+          "away": "Loudoun United FC",
+          "homeScore": 1,
+          "awayScore": 2,
+          "date": "March 17",
+          "note": null
+        },
+        {
+          "home": "Colorado Springs Switchbacks FC",
+          "away": "Azteca FC",
+          "homeScore": 3,
+          "awayScore": 0,
+          "date": "March 17",
+          "note": null
+        },
+        {
+          "home": "Indy Eleven",
+          "away": "Des Moines Menace",
+          "homeScore": 3,
+          "awayScore": 0,
+          "date": "March 17",
+          "note": null
+        },
+        {
+          "home": "Phoenix Rising FC",
+          "away": "San Ramon FC",
+          "homeScore": 4,
+          "awayScore": 0,
+          "date": "March 17",
+          "note": null
+        },
+        {
+          "home": "Chattanooga FC",
+          "away": "Kalonji Pro-Profile",
+          "homeScore": 2,
+          "awayScore": 1,
+          "date": "March 18",
+          "note": null
+        },
+        {
+          "home": "Asheville City SC",
+          "away": "Greenville Triumph SC",
+          "homeScore": 3,
+          "awayScore": 1,
+          "date": "March 18",
+          "note": null
+        },
+        {
+          "home": "Charleston Battery",
+          "away": "Badgers FC",
+          "homeScore": 2,
+          "awayScore": 1,
+          "date": "March 18",
+          "note": null
+        },
+        {
+          "home": "Louisville City FC",
+          "away": "Southern Indiana FC",
+          "homeScore": 2,
+          "awayScore": 0,
+          "date": "March 18",
+          "note": null
+        },
+        {
+          "home": "FC Naples",
+          "away": "Red Force",
+          "homeScore": 3,
+          "awayScore": 0,
+          "date": "March 18",
+          "note": null
+        },
+        {
+          "home": "FC Motown",
+          "away": "Hartford Athletic",
+          "homeScore": 0,
+          "awayScore": 2,
+          "date": "March 18",
+          "note": null
+        },
+        {
+          "home": "SC Vistula Garfield",
+          "away": "One Knoxville SC",
+          "homeScore": 1,
+          "awayScore": 3,
+          "date": "March 18",
+          "note": null
+        },
+        {
+          "home": "BOHFS St. Louis",
+          "away": "Union Omaha",
+          "homeScore": 0,
+          "awayScore": 8,
+          "date": "March 18",
+          "note": null
+        },
+        {
+          "home": "Little Rock Rangers",
+          "away": "FC Tulsa",
+          "homeScore": 2,
+          "awayScore": 4,
+          "date": "March 18",
+          "note": null
+        },
+        {
+          "home": "San Antonio FC",
+          "away": "ASC New Stars",
+          "homeScore": 6,
+          "awayScore": 0,
+          "date": "March 18",
+          "note": null
+        },
+        {
+          "home": "New Mexico United",
+          "away": "Cruizers FC",
+          "homeScore": 3,
+          "awayScore": 2,
+          "date": "March 18",
+          "note": null
+        },
+        {
+          "home": "Sacramento Republic FC",
+          "away": "El Farolito",
+          "homeScore": 2,
+          "awayScore": 0,
+          "date": "March 18",
+          "note": "AET"
+        },
+        {
+          "home": "AV ALTA FC",
+          "away": "Valley 559 FC",
+          "homeScore": 0,
+          "awayScore": 1,
+          "date": "March 18",
+          "note": null
+        },
+        {
+          "home": "Ventura County Fusion",
+          "away": "Spokane Velocity FC",
+          "homeScore": 1,
+          "awayScore": 2,
+          "date": "March 18",
+          "note": null
+        },
+        {
+          "home": "Orange County SC",
+          "away": "Laguna United FC",
+          "homeScore": 3,
+          "awayScore": 0,
+          "date": "March 18",
+          "note": null
+        },
+        {
+          "home": "Carolina Core FC",
+          "away": "Virginia Dream FC",
+          "homeScore": 1,
+          "awayScore": 2,
+          "date": "March 19",
+          "note": null
+        },
+        {
+          "home": "Charlotte Independence",
+          "away": "Ristozi FC",
+          "homeScore": 4,
+          "awayScore": 1,
+          "date": "March 19",
+          "note": null
+        },
+        {
+          "home": "Flint City Bucks",
+          "away": "Forward Madison FC",
+          "homeScore": 2,
+          "awayScore": 0,
+          "date": "March 19",
+          "note": null
+        },
+        {
+          "home": "Lexington SC",
+          "away": "Flower City Union",
+          "homeScore": 9,
+          "awayScore": 0,
+          "date": "March 19",
+          "note": null
+        },
+        {
+          "home": "Westchester SC",
+          "away": "NY Renegades FC",
+          "homeScore": 2,
+          "awayScore": 0,
+          "date": "March 19",
+          "note": null
+        },
+        {
+          "home": "Laredo Heat",
+          "away": "El Paso Locomotive FC",
+          "homeScore": 0,
+          "awayScore": 2,
+          "date": "March 19",
+          "note": null
+        },
+        {
+          "home": "Tennessee Tempo FC",
+          "away": "Chattanooga Red Wolves SC",
+          "homeScore": 1,
+          "awayScore": 0,
+          "date": "March 19",
+          "note": null
+        },
+        {
+          "home": "Pittsburgh Riverhounds SC",
+          "away": "Steel City FC",
+          "homeScore": null,
+          "awayScore": null,
+          "date": "March 25",
+          "note": "Mar 25"
+        },
+        {
+          "home": "FC America CFL Spurs",
+          "away": "South Georgia Tormenta FC",
+          "homeScore": 1,
+          "awayScore": 0,
+          "date": null,
+          "note": "FF"
+        }
+      ]
+    },
+    {
+      "name": "Second Round",
+      "schedule": "Mar 31 / Apr 1",
+      "matches": []
+    },
+    {
+      "name": "Round of 32",
+      "schedule": "Apr 14-15",
+      "matches": []
+    },
+    {
+      "name": "Round of 16",
+      "schedule": "Apr 28-29",
+      "matches": []
+    },
+    {
+      "name": "Quarterfinals",
+      "schedule": "May 19-20",
+      "matches": []
+    },
+    {
+      "name": "Semifinals",
+      "schedule": "Sep 15-16",
+      "matches": []
+    },
+    {
+      "name": "Final",
+      "schedule": "Oct 21",
+      "matches": []
+    }
+  ]
+}
