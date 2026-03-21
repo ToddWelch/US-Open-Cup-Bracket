@@ -379,6 +379,11 @@ export default function App() {
             <div style={{ fontSize: 14, color: "#bfbfbf", fontFamily: "monospace", marginTop: 2, letterSpacing: "0.1em" }}>
               111TH EDITION &#183; 80 TEAMS &#183; 7 ROUNDS &#183; $1M PURSE
             </div>
+            <div style={{ fontSize: 12, color: "#999", fontFamily: "monospace", marginTop: 3 }}>
+              UPDATED: {bracket.lastScrape ? new Date(bracket.lastScrape).toLocaleString() : bracket.lastUpdated ? new Date(bracket.lastUpdated).toLocaleString() : "N/A"}
+              {bracket.scrapeSource && <span> &#183; {bracket.scrapeSource}</span>}
+              {bracket.scrapeStatus && <span style={{ color: bracket.scrapeStatus === "ok" ? "#27AE3D" : "#D97706", marginLeft: 4 }}> &#183; {bracket.scrapeStatus.toUpperCase()}</span>}
+            </div>
           </div>
           <div style={{ display: "flex", gap: 8 }}>
             <div style={{ background: "#212844", border: "1px solid #3a3f5c", borderRadius: 4, padding: "3px 10px", textAlign: "center" }}>
