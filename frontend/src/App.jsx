@@ -362,7 +362,7 @@ export default function App() {
   ];
 
   return (
-    <div style={{ background: "#fff", minHeight: "100vh", color: "#333", fontFamily: "'Segoe UI',system-ui,sans-serif" }}>
+    <div style={{ background: "#f5f5f5", minHeight: "100vh", color: "#333", fontFamily: "'Segoe UI',system-ui,sans-serif" }}>
 
       {/* HEADER */}
       <div style={{ borderBottom: "1px solid #e0e0e0", padding: "14px 20px 12px",
@@ -449,7 +449,7 @@ export default function App() {
       </div>
 
       {/* BRACKET */}
-      <div ref={bracketRef} style={{ overflow: isMobile ? "visible" : "auto", overflowY: "visible", WebkitOverflowScrolling: "touch", cursor: isMobile ? "default" : "grab", userSelect: "none" }}>
+      <div ref={bracketRef} style={{ overflow: isMobile ? "visible" : "auto", overflowY: "visible", WebkitOverflowScrolling: "touch", cursor: isMobile ? "default" : "grab", userSelect: "none", background: "#eaeaea" }}>
         <div style={{
           width: `${(svgW + 40) * zoom}px`,
           height: `${(totalH + 30) * zoom}px`,
