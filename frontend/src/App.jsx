@@ -454,10 +454,9 @@ export default function App() {
       </div>
 
       {/* BRACKET */}
-      <div ref={bracketRef} style={isMobile ? { userSelect: "none", background: "#eaeaea" } : { overflow: "auto", WebkitOverflowScrolling: "touch", cursor: "grab", userSelect: "none", background: "#eaeaea" }}>
+      <div ref={bracketRef} style={isMobile ? { userSelect: "none", background: "#eaeaea" } : { overflowX: "auto", overflowY: "hidden", WebkitOverflowScrolling: "touch", cursor: "grab", userSelect: "none", background: "#eaeaea" }}>
         <div style={{
           width: `${(svgW + 40) * zoom}px`,
-          height: `${(totalH + 30) * zoom}px`,
         }}>
         <div style={{
           transform: `scale(${zoom})`, transformOrigin: "top left",
