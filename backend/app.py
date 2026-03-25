@@ -61,14 +61,15 @@ def static_files(path):
     return send_from_directory(app.static_folder, "index.html")
 
 
+os.makedirs(DATA_DIR, exist_ok=True)
+
+# Run initial scrape if bracket data is missing
+bracket = load_bracket()
+if bracket is None or not bracket.get("rounds"):
+    print("No bracket data found, running initial scrape...")
+    scrape_bracket()
+
+init_scheduler()
+
 if __name__ == "__main__":
-    os.makedirs(DATA_DIR, exist_ok=True)
-
-    # Run initial scrape if bracket data is missing
-    bracket = load_bracket()
-    if bracket is None or not bracket.get("rounds"):
-        print("No bracket data found, running initial scrape...")
-        scrape_bracket()
-
-    init_scheduler()
     app.run(host="0.0.0.0", port=8080, debug=True)

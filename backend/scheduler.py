@@ -6,6 +6,7 @@ from apscheduler.triggers.cron import CronTrigger
 
 from scraper import scrape_bracket
 
+logging.basicConfig(level=logging.INFO)
 logger = logging.getLogger(__name__)
 
 scheduler = BackgroundScheduler()
