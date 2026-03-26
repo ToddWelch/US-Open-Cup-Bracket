@@ -216,6 +216,7 @@ def parse_espn_event(event):
         status = competition.get("status", {})
         is_complete = status.get("type", {}).get("completed", False)
         state = status.get("type", {}).get("name", "")
+        is_live = state == "STATUS_IN_PROGRESS"
 
         date_str = event.get("date", "")
         date_display = None
@@ -227,22 +228,41 @@ def parse_espn_event(event):
                 pass
 
         note = None
+        clock = None
         detail = status.get("type", {}).get("detail", "")
         if "After Extra Time" in detail:
             note = "AET"
         elif "Penalties" in detail:
             note = "PEN"
-        elif not is_complete and state != "STATUS_FINAL":
+        elif not is_complete and not is_live and state != "STATUS_FINAL":
             if date_display:
                 note = dt.strftime("%b %d")
+
+        # Extract clock/minute for live games
+        if is_live:
+            clock_val = status.get("displayClock", "")
+            period = status.get("period", 0)
+            if clock_val:
+                clock = clock_val
+            elif detail:
+                clock = detail
+
+        # Determine match status
+        match_status = None
+        if is_complete or state == "STATUS_FINAL":
+            match_status = "ft"
+        elif is_live:
+            match_status = "live"
 
         return {
             "home": home["name"],
             "away": away["name"],
-            "homeScore": home["score"] if is_complete else None,
-            "awayScore": away["score"] if is_complete else None,
+            "homeScore": home["score"] if (is_complete or is_live) else None,
+            "awayScore": away["score"] if (is_complete or is_live) else None,
             "date": date_display,
             "note": note,
+            "status": match_status,
+            "clock": clock,
         }
 
     except (KeyError, IndexError, TypeError) as e:

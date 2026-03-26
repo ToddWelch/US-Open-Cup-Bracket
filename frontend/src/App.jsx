@@ -82,14 +82,22 @@ function Cell({match, x, y, roundIdx, isMls, isChamp}){
         borderLeft:won?"3px solid #27AE3D":"3px solid transparent",
         paddingLeft:5,paddingRight:5,gap:3}}>
         {name && <TierBadge team={name} size={sz.badge}/>}
-        <span style={{flex:1,fontSize:sz.font,fontWeight:won?700:400,
+        <span title={name || ""} style={{flex:1,fontSize:sz.font,fontWeight:won?700:400,
           whiteSpace:"nowrap",overflow:"hidden",textOverflow:"ellipsis",
           color:tbd?"#999":won?"#15192B":"#333",
-          fontStyle:tbd?"italic":"normal"}}>{dn}</span>
-        {m.note && isTop && <span style={{fontSize:Math.max(6, sz.badge-1),color:"#999",fontFamily:"monospace"}}>{m.note}</span>}
+          fontStyle:tbd?"italic":"normal",cursor:name?"default":"inherit"}}>{dn}</span>
+        {isTop && (() => {
+          const isLive = m.status === "live";
+          const isFT = m.status === "ft";
+          const label = isLive ? (m.clock || "LIVE") : isFT ? (m.note || "FT") : m.note;
+          if (!label) return null;
+          return <span style={{fontSize:Math.max(6, sz.badge-1),fontFamily:"monospace",fontWeight:700,
+            color:isLive?"#C2002F":isFT?"#27AE3D":"#999",
+            animation:isLive?"pulse 1.5s ease-in-out infinite":undefined}}>{label}</span>;
+        })()}
         <span style={{fontSize:sz.font,fontWeight:700,minWidth:14,textAlign:"right",
           fontFamily:"monospace",
-          color:won?"#27AE3D":score!=null?"#555":"#ccc"}}>{score!=null?score:""}</span>
+          color:won?"#27AE3D":m.status==="live"?"#C2002F":score!=null?"#555":"#ccc"}}>{score!=null?score:""}</span>
       </div>
     );
   };
