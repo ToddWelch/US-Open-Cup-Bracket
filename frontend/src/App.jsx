@@ -122,10 +122,15 @@ function buildRegion(matches, padTop) {
   const conns = [];
 
   const r1sz = ROUND_SIZES[0];
+  const regionCenter = padTop + (matches.length * (r1sz.ch + VG) - VG) / 2;
   const r1 = matches.map((m, i) => ({
     x: colX(0), y: padTop + i * (r1sz.ch + VG), match: m, roundIdx: 0
   }));
   rounds.push(r1);
+
+  // Convergence: from R16 (rIdx=3) onward, pull matches toward center
+  // 0 = natural spread, 1 = fully centered
+  const CONVERGE = { 3: 0.25, 4: 0.45, 5: 0.6 };
 
   let prev = r1;
   for (let rIdx = 1; rIdx <= 5; rIdx++) {
@@ -134,6 +139,7 @@ function buildRegion(matches, padTop) {
     const isMls = rIdx === 2;
     const cur = [];
     const cx = colX(rIdx);
+    const converge = CONVERGE[rIdx] || 0;
 
     if (isMls) {
       for (let i = 0; i < prev.length; i++) {
@@ -150,14 +156,16 @@ function buildRegion(matches, padTop) {
         const p1mid = p1.y + pSz.ch / 2;
         const p2mid = p2 ? p2.y + pSz.ch / 2 : p1mid;
         const midY = (p1mid + p2mid) / 2;
-        const newY = midY - sz.ch / 2;
+        // Pull toward center for later rounds
+        const adjustedMidY = converge > 0 ? midY + (regionCenter - midY) * converge : midY;
+        const newY = adjustedMidY - sz.ch / 2;
         // Propagate winners from previous round into this round's matchup
         const w1 = p1.match ? getWinner(p1.match) : null;
         const w2 = p2?.match ? getWinner(p2.match) : null;
         const advMatch = (w1 || w2) ? { home: w1 || null, away: w2 || null, homeScore: null, awayScore: null } : null;
         cur.push({ x: cx, y: newY, match: advMatch, roundIdx: rIdx });
-        conns.push({ x1: p1.x + pSz.cw, y1: p1mid, x2: cx, y2: midY });
-        if (p2) conns.push({ x1: p2.x + pSz.cw, y1: p2mid, x2: cx, y2: midY });
+        conns.push({ x1: p1.x + pSz.cw, y1: p1mid, x2: cx, y2: adjustedMidY });
+        if (p2) conns.push({ x1: p2.x + pSz.cw, y1: p2mid, x2: cx, y2: adjustedMidY });
       }
     }
     rounds.push(cur);
