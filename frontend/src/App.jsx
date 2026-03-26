@@ -332,7 +332,11 @@ export default function App() {
   // Initial fetch + poll every 5 minutes
   useEffect(() => {
     fetchBracket();
-    const interval = setInterval(fetchBracket, 5 * 60 * 1000);
+    // Poll every 30s during evening game windows (6pm-midnight ET), otherwise every 5min
+    const now = new Date();
+    const etHour = new Date(now.toLocaleString("en-US", { timeZone: "America/New_York" })).getHours();
+    const pollMs = (etHour >= 18 && etHour < 24) ? 30 * 1000 : 5 * 60 * 1000;
+    const interval = setInterval(fetchBracket, pollMs);
     return () => clearInterval(interval);
   }, [fetchBracket]);
 

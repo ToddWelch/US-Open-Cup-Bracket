@@ -78,6 +78,39 @@ def send_slack_alert(message):
         logger.error("Slack alert failed: %s", e)
 
 
+def scrape_espn_fast():
+    """ESPN-only fast poll for live game updates. Skips Wikipedia/ussoccer."""
+    existing = load_existing()
+    now = datetime.now(timezone.utc)
+
+    try:
+        matches = fetch_espn()
+    except Exception as e:
+        logger.warning("ESPN fast poll failed: %s", e)
+        return
+
+    if not matches:
+        logger.info("ESPN fast poll: no data")
+        return
+
+    new_data = build_bracket(matches)
+
+    # Never overwrite with less data
+    if existing and count_matches(new_data) < count_matches(existing):
+        logger.info("ESPN fast poll: fewer matches, skipping")
+        return
+
+    new_data["lastScrape"] = now.isoformat()
+    new_data["scrapeSource"] = "ESPN (live)"
+    new_data["scrapeStatus"] = "ok"
+    new_data["lastUpdated"] = now.isoformat()
+    # Preserve source results from last full scrape
+    if existing and "sourceResults" in existing:
+        new_data["sourceResults"] = existing["sourceResults"]
+    save_bracket(new_data)
+    logger.info("ESPN fast poll: updated %d matches", count_matches(new_data))
+
+
 def scrape_bracket():
     existing = load_existing()
     now = datetime.now(timezone.utc)

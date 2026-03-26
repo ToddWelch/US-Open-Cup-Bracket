@@ -4,7 +4,7 @@ from datetime import datetime
 from apscheduler.schedulers.background import BackgroundScheduler
 from apscheduler.triggers.cron import CronTrigger
 
-from scraper import scrape_bracket
+from scraper import scrape_bracket, scrape_espn_fast
 
 logging.basicConfig(level=logging.INFO)
 logger = logging.getLogger(__name__)
@@ -14,16 +14,26 @@ scheduler = BackgroundScheduler()
 
 def run_scrape():
     now = datetime.now()
-    logger.info("Scheduled scrape at %s", now.isoformat())
+    logger.info("Full scrape at %s", now.isoformat())
     try:
         scrape_bracket()
-        logger.info("Scrape completed at %s", datetime.now().isoformat())
+        logger.info("Full scrape completed at %s", datetime.now().isoformat())
     except Exception as e:
-        logger.error("Scrape error: %s", e)
+        logger.error("Full scrape error: %s", e)
+
+
+def run_fast_poll():
+    now = datetime.now()
+    logger.info("ESPN fast poll at %s", now.isoformat())
+    try:
+        scrape_espn_fast()
+        logger.info("ESPN fast poll completed at %s", datetime.now().isoformat())
+    except Exception as e:
+        logger.error("ESPN fast poll error: %s", e)
 
 
 def init_scheduler():
-    # Default: every 2 hours
+    # Full scrape (all sources): every 2 hours
     scheduler.add_job(
         run_scrape,
         CronTrigger(hour="*/2"),
@@ -31,11 +41,11 @@ def init_scheduler():
         replace_existing=True,
     )
 
-    # Game days: every 30 minutes, 6pm-midnight ET
+    # ESPN-only fast poll: every 2 minutes, 6pm-midnight ET on game days
     scheduler.add_job(
-        run_scrape,
-        CronTrigger(minute="*/30", hour="18-23", timezone="US/Eastern"),
-        id="scrape_gameday",
+        run_fast_poll,
+        CronTrigger(minute="*/2", hour="18-23", timezone="US/Eastern"),
+        id="scrape_gameday_live",
         replace_existing=True,
     )
 
