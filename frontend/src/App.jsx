@@ -117,10 +117,10 @@ function Cell({match, x, y, roundIdx, isMls, isChamp}){
 }
 
 /* ═══════════ BRACKET BUILDER ═══════════ */
-// convergeTarget: Y value to pull later rounds toward (in region-local coords)
-//   upper bracket -> pull DOWN toward bottom (target = high Y)
-//   lower bracket -> pull UP toward top (target = low Y)
-function buildRegion(matches, padTop, convergeTarget) {
+// convergeDir: "down" (upper bracket) or "up" (lower bracket)
+//   Pulls later rounds toward the divider, clamped so a match never
+//   goes past the edges of the feeder pair it comes from.
+function buildRegion(matches, padTop, convergeDir) {
   const rounds = [];
   const conns = [];
 
@@ -130,8 +130,8 @@ function buildRegion(matches, padTop, convergeTarget) {
   }));
   rounds.push(r1);
 
-  // From R16 (rIdx=3) onward, progressively pull toward convergeTarget
-  const CONVERGE = { 3: 0.3, 4: 0.55, 5: 0.75 };
+  // From R16 (rIdx=3) onward, pull toward feeder edge
+  const CONVERGE = { 3: 0.5, 4: 0.7, 5: 0.85 };
 
   let prev = r1;
   for (let rIdx = 1; rIdx <= 5; rIdx++) {
@@ -140,7 +140,7 @@ function buildRegion(matches, padTop, convergeTarget) {
     const isMls = rIdx === 2;
     const cur = [];
     const cx = colX(rIdx);
-    const converge = convergeTarget != null ? (CONVERGE[rIdx] || 0) : 0;
+    const converge = convergeDir ? (CONVERGE[rIdx] || 0) : 0;
 
     if (isMls) {
       for (let i = 0; i < prev.length; i++) {
@@ -157,8 +157,23 @@ function buildRegion(matches, padTop, convergeTarget) {
         const p1mid = p1.y + pSz.ch / 2;
         const p2mid = p2 ? p2.y + pSz.ch / 2 : p1mid;
         const midY = (p1mid + p2mid) / 2;
-        const adjustedMidY = converge > 0 ? midY + (convergeTarget - midY) * converge : midY;
-        const newY = adjustedMidY - sz.ch / 2;
+
+        let newY = midY - sz.ch / 2;
+        if (converge > 0 && p2) {
+          if (convergeDir === "down") {
+            // Upper bracket: pull down, but top edge can't go below p2's bottom edge
+            const maxY = p2.y + pSz.ch;
+            const targetY = midY + (maxY - midY + sz.ch / 2) * converge - sz.ch / 2;
+            newY = Math.min(targetY, maxY);
+          } else {
+            // Lower bracket: pull up, but bottom edge can't go above p1's top edge
+            const minY = p1.y - sz.ch;
+            const targetY = midY + (minY - midY + sz.ch / 2) * converge - sz.ch / 2;
+            newY = Math.max(targetY, minY);
+          }
+        }
+
+        const adjustedMidY = newY + sz.ch / 2;
         const w1 = p1.match ? getWinner(p1.match) : null;
         const w2 = p2?.match ? getWinner(p2.match) : null;
         const advMatch = (w1 || w2) ? { home: w1 || null, away: w2 || null, homeScore: null, awayScore: null } : null;
@@ -334,12 +349,8 @@ export default function App() {
   const R1 = bracket.rounds[0]?.matches || [];
 
   const topR1 = R1.slice(0, 16), botR1 = R1.slice(16, 32);
-  const r1sz = ROUND_SIZES[0];
-  const regionSpan = 16 * (r1sz.ch + VG);
-  // Upper bracket: pull later rounds DOWN toward the bottom
-  const topB = buildRegion(topR1, 8, 8 + regionSpan - r1sz.ch / 2);
-  // Lower bracket: pull later rounds UP toward the top
-  const botB = buildRegion(botR1, 8, 8 + r1sz.ch / 2);
+  const topB = buildRegion(topR1, 8, "down");
+  const botB = buildRegion(botR1, 8, "up");
 
   const topSemi = topB.rounds[5]?.[0];
   const botSemi = botB.rounds[5]?.[0];
