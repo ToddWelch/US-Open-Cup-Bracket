@@ -117,20 +117,21 @@ function Cell({match, x, y, roundIdx, isMls, isChamp}){
 }
 
 /* ═══════════ BRACKET BUILDER ═══════════ */
-function buildRegion(matches, padTop) {
+// convergeTarget: Y value to pull later rounds toward (in region-local coords)
+//   upper bracket -> pull DOWN toward bottom (target = high Y)
+//   lower bracket -> pull UP toward top (target = low Y)
+function buildRegion(matches, padTop, convergeTarget) {
   const rounds = [];
   const conns = [];
 
   const r1sz = ROUND_SIZES[0];
-  const regionCenter = padTop + (matches.length * (r1sz.ch + VG) - VG) / 2;
   const r1 = matches.map((m, i) => ({
     x: colX(0), y: padTop + i * (r1sz.ch + VG), match: m, roundIdx: 0
   }));
   rounds.push(r1);
 
-  // Convergence: from R16 (rIdx=3) onward, pull matches toward center
-  // 0 = natural spread, 1 = fully centered
-  const CONVERGE = { 3: 0.25, 4: 0.45, 5: 0.6 };
+  // From R16 (rIdx=3) onward, progressively pull toward convergeTarget
+  const CONVERGE = { 3: 0.3, 4: 0.55, 5: 0.75 };
 
   let prev = r1;
   for (let rIdx = 1; rIdx <= 5; rIdx++) {
@@ -139,7 +140,7 @@ function buildRegion(matches, padTop) {
     const isMls = rIdx === 2;
     const cur = [];
     const cx = colX(rIdx);
-    const converge = CONVERGE[rIdx] || 0;
+    const converge = convergeTarget != null ? (CONVERGE[rIdx] || 0) : 0;
 
     if (isMls) {
       for (let i = 0; i < prev.length; i++) {
@@ -156,10 +157,8 @@ function buildRegion(matches, padTop) {
         const p1mid = p1.y + pSz.ch / 2;
         const p2mid = p2 ? p2.y + pSz.ch / 2 : p1mid;
         const midY = (p1mid + p2mid) / 2;
-        // Pull toward center for later rounds
-        const adjustedMidY = converge > 0 ? midY + (regionCenter - midY) * converge : midY;
+        const adjustedMidY = converge > 0 ? midY + (convergeTarget - midY) * converge : midY;
         const newY = adjustedMidY - sz.ch / 2;
-        // Propagate winners from previous round into this round's matchup
         const w1 = p1.match ? getWinner(p1.match) : null;
         const w2 = p2?.match ? getWinner(p2.match) : null;
         const advMatch = (w1 || w2) ? { home: w1 || null, away: w2 || null, homeScore: null, awayScore: null } : null;
@@ -335,8 +334,12 @@ export default function App() {
   const R1 = bracket.rounds[0]?.matches || [];
 
   const topR1 = R1.slice(0, 16), botR1 = R1.slice(16, 32);
-  const topB = buildRegion(topR1, 8);
-  const botB = buildRegion(botR1, 8);
+  const r1sz = ROUND_SIZES[0];
+  const regionSpan = 16 * (r1sz.ch + VG);
+  // Upper bracket: pull later rounds DOWN toward the bottom
+  const topB = buildRegion(topR1, 8, 8 + regionSpan - r1sz.ch / 2);
+  // Lower bracket: pull later rounds UP toward the top
+  const botB = buildRegion(botR1, 8, 8 + r1sz.ch / 2);
 
   const topSemi = topB.rounds[5]?.[0];
   const botSemi = botB.rounds[5]?.[0];
