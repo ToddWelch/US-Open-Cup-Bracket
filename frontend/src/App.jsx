@@ -204,11 +204,31 @@ function DrawConns({ conns }) {
   });
 }
 
+function formatGameTime(isoStr) {
+  if (!isoStr) return null;
+  try {
+    const d = new Date(isoStr);
+    const mm = String(d.getMonth() + 1).padStart(2, "0");
+    const dd = String(d.getDate()).padStart(2, "0");
+    const yyyy = d.getFullYear();
+    const et = d.toLocaleString("en-US", { timeZone: "America/New_York", hour: "numeric", minute: "2-digit", hour12: true });
+    const pt = d.toLocaleString("en-US", { timeZone: "America/Los_Angeles", hour: "numeric", minute: "2-digit", hour12: true });
+    return `${mm}/${dd}/${yyyy} ${et} ET / ${pt} PT`;
+  } catch { return null; }
+}
+
 function DrawRounds({ rounds }) {
-  return rounds.map((round, ri) => round.map((s, mi) => (
-    <Cell key={`${ri}-${mi}`} match={s.match} x={s.x} y={s.y}
-      roundIdx={s.roundIdx} isMls={s.isMls} />
-  )));
+  return rounds.map((round, ri) => round.map((s, mi) => {
+    const sz = ROUND_SIZES[s.roundIdx] || ROUND_SIZES[0];
+    const gt = s.match && !s.match.status ? formatGameTime(s.match.gameTime) : null;
+    return <g key={`${ri}-${mi}`}>
+      <Cell match={s.match} x={s.x} y={s.y}
+        roundIdx={s.roundIdx} isMls={s.isMls} />
+      {gt && <text x={s.x + sz.cw / 2} y={s.y + sz.ch + 9}
+        textAnchor="middle" fontSize={Math.max(7, sz.badge - 1)}
+        fill="#777" fontFamily="monospace">{gt}</text>}
+    </g>;
+  }));
 }
 
 /* ═══════════ ZOOM HOOK ═══════════ */

@@ -287,6 +287,11 @@ def parse_espn_event(event):
         elif is_live:
             match_status = "live"
 
+        # Include full ISO datetime for upcoming games
+        game_time = None
+        if date_str and not is_complete and not is_live:
+            game_time = date_str
+
         return {
             "home": home["name"],
             "away": away["name"],
@@ -296,6 +301,7 @@ def parse_espn_event(event):
             "note": note,
             "status": match_status,
             "clock": clock,
+            "gameTime": game_time,
         }
 
     except (KeyError, IndexError, TypeError) as e:
