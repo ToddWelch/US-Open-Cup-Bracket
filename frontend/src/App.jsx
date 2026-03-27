@@ -233,7 +233,7 @@ function DrawRounds({ rounds }) {
         roundIdx={s.roundIdx} isMls={s.isMls} />
       {gt && <text x={s.x + sz.cw / 2} y={s.y + sz.ch + 9}
         textAnchor="middle" fontSize={Math.max(7, sz.badge - 1)}
-        fill="#777" fontFamily="monospace">{gt}</text>}
+        fill="#444" fontFamily="monospace">{gt}</text>}
     </g>;
   }));
 }
