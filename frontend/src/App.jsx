@@ -128,7 +128,9 @@ function Cell({match, x, y, roundIdx, isMls, isChamp}){
 // convergeDir: "down" (upper bracket) or "up" (lower bracket)
 //   Pulls later rounds toward the divider, clamped so a match never
 //   goes past the edges of the feeder pair it comes from.
-function buildRegion(matches, padTop, convergeDir) {
+// roundData: array of match arrays for rounds 1-6 (from API), used to
+// populate cells with actual match data (gameTime, status, etc.)
+function buildRegion(matches, padTop, convergeDir, roundData) {
   const rounds = [];
   const conns = [];
 
@@ -149,13 +151,15 @@ function buildRegion(matches, padTop, convergeDir) {
     const cur = [];
     const cx = colX(rIdx);
     const converge = convergeDir ? (CONVERGE[rIdx] || 0) : 0;
+    const apiMatches = roundData[rIdx] || [];
 
     if (isMls) {
       for (let i = 0; i < prev.length; i++) {
         const p = prev[i];
         const pMidY = p.y + prevSz.ch / 2;
         const newY = pMidY - sz.ch / 2;
-        cur.push({ x: cx, y: newY, match: null, isMls: true, roundIdx: rIdx });
+        const apiMatch = apiMatches[i] || null;
+        cur.push({ x: cx, y: newY, match: apiMatch, isMls: true, roundIdx: rIdx });
         conns.push({ x1: p.x + prevSz.cw, y1: pMidY, x2: cx, y2: pMidY });
       }
     } else {
@@ -169,12 +173,10 @@ function buildRegion(matches, padTop, convergeDir) {
         let newY = midY - sz.ch / 2;
         if (converge > 0 && p2) {
           if (convergeDir === "down") {
-            // Upper bracket: pull down, but top edge can't go below p2's bottom edge
             const maxY = p2.y + pSz.ch;
             const targetY = midY + (maxY - midY + sz.ch / 2) * converge - sz.ch / 2;
             newY = Math.min(targetY, maxY);
           } else {
-            // Lower bracket: pull up, but bottom edge can't go above p1's top edge
             const minY = p1.y - sz.ch;
             const targetY = midY + (minY - midY + sz.ch / 2) * converge - sz.ch / 2;
             newY = Math.max(targetY, minY);
@@ -182,10 +184,15 @@ function buildRegion(matches, padTop, convergeDir) {
         }
 
         const adjustedMidY = newY + sz.ch / 2;
-        const w1 = p1.match ? getWinner(p1.match) : null;
-        const w2 = p2?.match ? getWinner(p2.match) : null;
-        const advMatch = (w1 || w2) ? { home: w1 || null, away: w2 || null, homeScore: null, awayScore: null } : null;
-        cur.push({ x: cx, y: newY, match: advMatch, roundIdx: rIdx });
+        // Use API match data if available, otherwise build from winners
+        const matchIdx = i / 2;
+        let cellMatch = apiMatches[matchIdx] || null;
+        if (!cellMatch) {
+          const w1 = p1.match ? getWinner(p1.match) : null;
+          const w2 = p2?.match ? getWinner(p2.match) : null;
+          if (w1 || w2) cellMatch = { home: w1 || null, away: w2 || null, homeScore: null, awayScore: null };
+        }
+        cur.push({ x: cx, y: newY, match: cellMatch, roundIdx: rIdx });
         conns.push({ x1: p1.x + pSz.cw, y1: p1mid, x2: cx, y2: adjustedMidY });
         if (p2) conns.push({ x1: p2.x + pSz.cw, y1: p2mid, x2: cx, y2: adjustedMidY });
       }
@@ -381,8 +388,26 @@ export default function App() {
   const R1 = bracket.rounds[0]?.matches || [];
 
   const topR1 = R1.slice(0, 16), botR1 = R1.slice(16, 32);
-  const topB = buildRegion(topR1, 8, "down");
-  const botB = buildRegion(botR1, 8, "up");
+
+  // Split each round's matches into top/bottom halves for the two regions
+  const splitRound = (rIdx) => {
+    const m = bracket.rounds[rIdx]?.matches || [];
+    const half = Math.ceil(m.length / 2);
+    return [m.slice(0, half), m.slice(half)];
+  };
+  // roundData[rIdx] = array of matches for that visual column
+  // rIdx 0=R1, 1=R2, 2=R32, 3=R16, 4=QF, 5=SF
+  // API rounds: 0=R1, 1=R2, 2=R32, 3=R16, 4=QF, 5=SF
+  const topRounds = [null]; // R1 already passed as matches param
+  const botRounds = [null];
+  for (let i = 1; i <= 5; i++) {
+    const [top, bot] = splitRound(i);
+    topRounds.push(top);
+    botRounds.push(bot);
+  }
+
+  const topB = buildRegion(topR1, 8, "down", topRounds);
+  const botB = buildRegion(botR1, 8, "up", botRounds);
 
   const topSemi = topB.rounds[5]?.[0];
   const botSemi = botB.rounds[5]?.[0];
