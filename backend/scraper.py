@@ -638,11 +638,11 @@ def build_bracket(matches):
     # Reorder feeder rounds so positional pairing matches bracket topology.
     # Round transitions where reordering applies:
     #   R1 (idx 0) -> R2 (idx 1): feeder has 32 matches, next has 16
-    #   R32 (idx 2) -> R16 (idx 3): SKIP, R32 is 1:1 with R2 (MLS entry round)
+    #   R2 (idx 1) -> R32 (idx 2): SKIP, R32 is the MLS entry round (1:1 mapping)
+    #   R32 (idx 2) -> R16 (idx 3): feeder has 16 matches, next has 8
     #   R16 (idx 3) -> QF (idx 4): feeder has 8, next has 4
     #   QF (idx 4) -> SF (idx 5): feeder has 4, next has 2
-    # We skip R2->R32 because R32 has special MLS-entry handling (1:1 mapping).
-    reorder_pairs = [(0, 1), (3, 4), (4, 5)]
+    reorder_pairs = [(0, 1), (2, 3), (3, 4), (4, 5)]
 
     for feeder_idx, next_idx in reorder_pairs:
         feeder_round = rounds[feeder_idx]["matches"]
