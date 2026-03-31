@@ -18,6 +18,7 @@ function getTier(t){if(!t)return null;if(MLS_L.some(m=>t.includes(m)||m.includes
 function getWinner(m){if(m.homeScore==null||m.awayScore==null)return null;return m.homeScore>m.awayScore?m.home:m.away;}
 const TIER_RANK = { MLS: 0, "USL-C": 1, USL1: 2, MLSNP: 3, USL2: 4, AM: 5 };
 function isCupset(m) {
+  if (m.status !== "ft") return false;
   const w = getWinner(m);
   if (!w) return false;
   const loser = w === m.home ? m.away : m.home;
