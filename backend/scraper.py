@@ -532,6 +532,94 @@ def parse_ussoccer_row(cells):
 
 # ─── BRACKET BUILDER ──────────────────────────────────────────────────
 
+def _reorder_feeder_round(feeder_matches, next_round_matches):
+    """Reorder feeder_matches so that positional pairing is correct.
+
+    The frontend pairs feeders by position: feeder[2i] + feeder[2i+1] -> next[i].
+    This function reorders feeder_matches so that each pair of feeders at
+    positions [2i, 2i+1] contains the two matches whose winners appear in
+    next_round_matches[i].
+
+    Returns a new list (same length as feeder_matches) with corrected ordering,
+    or the original list unchanged if reordering cannot be determined.
+    """
+    if not feeder_matches or not next_round_matches:
+        return feeder_matches
+
+    # Build lookup: team name -> feeder match index
+    # A team can be either home or away in the feeder round
+    team_to_feeder = {}
+    for idx, match in enumerate(feeder_matches):
+        home = match.get("home", "")
+        away = match.get("away", "")
+        if home and home != "TBD":
+            team_to_feeder[home] = idx
+        if away and away != "TBD":
+            team_to_feeder[away] = idx
+
+    # For each next-round match, find its two feeder matches
+    # feeder_assignments[i] = [feeder_idx_a, feeder_idx_b] for next_round[i]
+    feeder_assignments = [[] for _ in range(len(next_round_matches))]
+    used_feeders = set()
+
+    for nr_idx, nr_match in enumerate(next_round_matches):
+        home = nr_match.get("home", "")
+        away = nr_match.get("away", "")
+
+        if home and home != "TBD" and home in team_to_feeder:
+            f_idx = team_to_feeder[home]
+            if f_idx not in used_feeders:
+                feeder_assignments[nr_idx].append(f_idx)
+                used_feeders.add(f_idx)
+
+        if away and away != "TBD" and away in team_to_feeder:
+            f_idx = team_to_feeder[away]
+            if f_idx not in used_feeders:
+                feeder_assignments[nr_idx].append(f_idx)
+                used_feeders.add(f_idx)
+
+    # Handle TBD: find unassigned feeders and assign them to next-round
+    # matches that still need a feeder (have fewer than 2 assigned)
+    unassigned = [i for i in range(len(feeder_matches)) if i not in used_feeders]
+    for nr_idx in range(len(next_round_matches)):
+        while len(feeder_assignments[nr_idx]) < 2 and unassigned:
+            f_idx = unassigned.pop(0)
+            feeder_assignments[nr_idx].append(f_idx)
+            used_feeders.add(f_idx)
+
+    # Validate: every next-round match should have exactly 2 feeders
+    # and total assigned feeders should equal len(feeder_matches)
+    total_assigned = sum(len(fa) for fa in feeder_assignments)
+    if total_assigned != len(feeder_matches):
+        logger.warning(
+            "Feeder reordering: expected %d assignments but got %d, keeping original order",
+            len(feeder_matches), total_assigned
+        )
+        return feeder_matches
+
+    for nr_idx, fa in enumerate(feeder_assignments):
+        if len(fa) != 2:
+            logger.warning(
+                "Feeder reordering: next-round match %d has %d feeders (expected 2), keeping original order",
+                nr_idx, len(fa)
+            )
+            return feeder_matches
+
+    # Build reordered array: for next_round[i], place feeders at [2i] and [2i+1]
+    reordered = [None] * len(feeder_matches)
+    for nr_idx, fa in enumerate(feeder_assignments):
+        reordered[2 * nr_idx] = feeder_matches[fa[0]]
+        reordered[2 * nr_idx + 1] = feeder_matches[fa[1]]
+
+    # Final safety check: no None entries
+    if any(m is None for m in reordered):
+        logger.warning("Feeder reordering: produced None entries, keeping original order")
+        return feeder_matches
+
+    logger.info("Feeder round reordered successfully (%d matches)", len(reordered))
+    return reordered
+
+
 def build_bracket(matches):
     """Organize flat matches into round structure."""
     rounds = []
@@ -546,5 +634,35 @@ def build_bracket(matches):
             "matches": round_matches,
         })
         idx += size
+
+    # Reorder feeder rounds so positional pairing matches bracket topology.
+    # Round transitions where reordering applies:
+    #   R1 (idx 0) -> R2 (idx 1): feeder has 32 matches, next has 16
+    #   R32 (idx 2) -> R16 (idx 3): SKIP, R32 is 1:1 with R2 (MLS entry round)
+    #   R16 (idx 3) -> QF (idx 4): feeder has 8, next has 4
+    #   QF (idx 4) -> SF (idx 5): feeder has 4, next has 2
+    # We skip R2->R32 because R32 has special MLS-entry handling (1:1 mapping).
+    reorder_pairs = [(0, 1), (3, 4), (4, 5)]
+
+    for feeder_idx, next_idx in reorder_pairs:
+        feeder_round = rounds[feeder_idx]["matches"]
+        next_round = rounds[next_idx]["matches"]
+
+        if not feeder_round or not next_round:
+            continue
+
+        # Only reorder if feeder has exactly 2x the matches of next round
+        if len(feeder_round) != 2 * len(next_round):
+            logger.warning(
+                "Skipping reorder for rounds %d->%d: expected %d feeder matches but got %d",
+                feeder_idx, next_idx, 2 * len(next_round), len(feeder_round)
+            )
+            continue
+
+        try:
+            rounds[feeder_idx]["matches"] = _reorder_feeder_round(feeder_round, next_round)
+        except Exception as e:
+            logger.error("Feeder reordering failed for rounds %d->%d: %s", feeder_idx, next_idx, e)
+            # Keep original order on any unexpected error
 
     return {"rounds": rounds}
