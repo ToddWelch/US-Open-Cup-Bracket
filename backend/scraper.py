@@ -249,7 +249,15 @@ def parse_espn_event(event):
         status = competition.get("status", {})
         is_complete = status.get("type", {}).get("completed", False)
         state = status.get("type", {}).get("name", "")
-        is_live = state == "STATUS_IN_PROGRESS"
+        # ESPN uses specific states for soccer (STATUS_FIRST_HALF, STATUS_SECOND_HALF,
+        # STATUS_HALFTIME, STATUS_EXTRA_TIME, STATUS_PENALTY_SHOOTOUT, etc.)
+        # rather than a generic STATUS_IN_PROGRESS. Treat anything not in the
+        # known non-live set as live so new states are handled automatically.
+        NOT_LIVE_STATES = {
+            "STATUS_SCHEDULED", "STATUS_POSTPONED", "STATUS_CANCELED",
+            "STATUS_FINAL", "STATUS_FULL_TIME", "STATUS_ABANDONED", "",
+        }
+        is_live = not is_complete and state not in NOT_LIVE_STATES
 
         date_str = event.get("date", "")
         date_display = None
