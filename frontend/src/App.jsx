@@ -437,9 +437,42 @@ export default function App() {
 
   const svgW = finalX + FINAL_SIZE.cw + 60;
 
-  const totalComplete = R1.filter(m => getWinner(m)).length;
-  const cupsetCount = R1.filter(m => isCupset(m)).length;
-  const pendingMatch = R1.find(m => m.homeScore == null);
+  // Dynamic round-aware progress tracking
+  const RSHORT = ["R1", "R2", "R32", "R16", "QF", "SF", "FINAL"];
+  const allRounds = bracket.rounds || [];
+
+  // Find the current active round: latest populated round with incomplete matches.
+  // Skip rounds with 0 matches (future rounds not yet populated).
+  let currentRoundIdx = 0;
+  for (let i = allRounds.length - 1; i >= 0; i--) {
+    const rm = allRounds[i]?.matches || [];
+    if (rm.length === 0) continue;
+    const done = rm.filter(m => getWinner(m)).length;
+    if (done < rm.length) {
+      currentRoundIdx = i;
+      break;
+    }
+    // All matches done in this round; keep as fallback if nothing active found
+    currentRoundIdx = i;
+  }
+
+  const currentRoundMatches = allRounds[currentRoundIdx]?.matches || [];
+  const totalComplete = currentRoundMatches.filter(m => getWinner(m)).length;
+  const totalInRound = currentRoundMatches.length;
+  const roundLabel = RSHORT[currentRoundIdx] || "R?";
+  const roundDone = totalInRound > 0 && totalComplete === totalInRound;
+
+  // Tournament-wide cupset count
+  const cupsetCount = allRounds.flatMap(r => r.matches || []).filter(m => isCupset(m)).length;
+
+  // Next unplayed match across all rounds (skip empty placeholder matches)
+  let nextMatch = null;
+  let nextRoundIdx = null;
+  for (let i = 0; i < allRounds.length; i++) {
+    const rm = allRounds[i]?.matches || [];
+    const pending = rm.find(m => m.homeScore == null && m.home);
+    if (pending) { nextMatch = pending; nextRoundIdx = i; break; }
+  }
 
   const zoomPresets = [
     { label: "Fit", val: 0.55 },
@@ -476,8 +509,8 @@ export default function App() {
           </div>
           <div style={{ display: "flex", gap: 8 }}>
             <div style={{ background: "#212844", border: "1px solid #3a3f5c", borderRadius: 4, padding: "3px 10px", textAlign: "center" }}>
-              <div style={{ fontSize: 20, fontWeight: 800, color: "#27AE3D", fontFamily: "monospace" }}>{totalComplete}<span style={{ fontSize: 14, color: "#bfbfbf" }}>/32</span></div>
-              <div style={{ fontSize: 12, color: "#bfbfbf", fontFamily: "monospace", letterSpacing: "0.08em" }}>R1 DONE</div>
+              <div style={{ fontSize: 20, fontWeight: 800, color: "#27AE3D", fontFamily: "monospace" }}>{totalComplete}<span style={{ fontSize: 14, color: "#bfbfbf" }}>/{totalInRound}</span></div>
+              <div style={{ fontSize: 12, color: "#bfbfbf", fontFamily: "monospace", letterSpacing: "0.08em" }}>{roundLabel} {roundDone ? "DONE" : "ACTIVE"}</div>
             </div>
             <div style={{ background: "#212844", border: "1px solid #3a3f5c", borderRadius: 4, padding: "3px 10px", textAlign: "center" }}>
               <div style={{ fontSize: 20, fontWeight: 800, color: "#D97706", fontFamily: "monospace" }}>{cupsetCount}</div>
@@ -614,10 +647,10 @@ export default function App() {
       }}>
         <div style={{ display: "flex", gap: 16, alignItems: "center", flexWrap: "wrap" }}>
           <span style={{ fontSize: 13, color: "#555", fontFamily: "monospace" }}>
-            PENDING: {pendingMatch ? `${pendingMatch.home} vs ${pendingMatch.away} (${pendingMatch.note})` : "All R1 Complete"}
+            PENDING: {nextMatch ? `${nextMatch.home} vs ${nextMatch.away}${nextMatch.note ? ` (${nextMatch.note})` : ""}` : "Tournament Complete"}
           </span>
           <span style={{ fontSize: 13, color: "#555", fontFamily: "monospace" }}>
-            NEXT: Second Round Draw TBD
+            NEXT: {nextRoundIdx != null ? `${nextRoundIdx === 6 ? "FINAL" : (RNAMES[nextRoundIdx]?.name || "TBD")} (${nextRoundIdx === 6 ? "Oct 21" : (RNAMES[nextRoundIdx]?.sub || "")})` : "Season Complete"}
           </span>
         </div>
         <span style={{ fontSize: 12, color: "#777", fontFamily: "monospace" }}>
