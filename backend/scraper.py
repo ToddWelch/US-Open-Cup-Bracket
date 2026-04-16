@@ -233,11 +233,14 @@ def parse_espn_event(event):
         competitors = competition["competitors"]
 
         home = away = None
+        explicit_winner = None
         for team in competitors:
             entry = {
                 "name": team["team"]["displayName"],
                 "score": int(team.get("score", 0)) if team.get("score") is not None else None,
             }
+            if team.get("winner", False):
+                explicit_winner = entry["name"]
             if team.get("homeAway") == "home":
                 home = entry
             else:
@@ -255,7 +258,8 @@ def parse_espn_event(event):
         # known non-live set as live so new states are handled automatically.
         NOT_LIVE_STATES = {
             "STATUS_SCHEDULED", "STATUS_POSTPONED", "STATUS_CANCELED",
-            "STATUS_FINAL", "STATUS_FULL_TIME", "STATUS_ABANDONED", "",
+            "STATUS_FINAL", "STATUS_FULL_TIME", "STATUS_ABANDONED",
+            "STATUS_FINAL_PEN", "STATUS_FINAL_AET", "",
         }
         is_live = not is_complete and state not in NOT_LIVE_STATES
 
@@ -271,10 +275,10 @@ def parse_espn_event(event):
         note = None
         clock = None
         detail = status.get("type", {}).get("detail", "")
-        if "After Extra Time" in detail:
-            note = "AET"
-        elif "Penalties" in detail:
+        if state == "STATUS_FINAL_PEN" or "Penalties" in detail:
             note = "PEN"
+        elif state == "STATUS_FINAL_AET" or "After Extra Time" in detail:
+            note = "AET"
         elif not is_complete and not is_live and state != "STATUS_FINAL":
             if date_display:
                 note = dt.strftime("%b %d")
@@ -310,6 +314,7 @@ def parse_espn_event(event):
             "status": match_status,
             "clock": clock,
             "gameTime": game_time,
+            "winner": explicit_winner if is_complete else None,
         }
 
     except (KeyError, IndexError, TypeError) as e:

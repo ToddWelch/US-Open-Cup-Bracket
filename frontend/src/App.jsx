@@ -15,7 +15,7 @@ const USL1_L=["AV ALTA FC","Charlotte Independence","Chattanooga Red Wolves SC",
 const MLSNP_L=["Carolina Core FC","Chattanooga FC"];
 const USL2_L=["Vermont Green FC","Flint City Bucks","Steel City FC","Ventura County Fusion","Des Moines Menace","Northern Virginia FC","Asheville City SC","Flower City Union","West Chester United SC"];
 function getTier(t){if(!t)return null;if(MLS_L.some(m=>t.includes(m)||m.includes(t)))return"MLS";if(USLC_L.some(m=>t.includes(m)||m.includes(t)))return"USL-C";if(USL1_L.some(m=>t.includes(m)||m.includes(t)))return"USL1";if(MLSNP_L.some(m=>t===m))return"MLSNP";if(USL2_L.some(m=>t.includes(m)||m.includes(t)))return"USL2";return"AM";}
-function getWinner(m){if(m.homeScore==null||m.awayScore==null)return null;return m.homeScore>m.awayScore?m.home:m.away;}
+function getWinner(m){if(m.winner)return m.winner;if(m.homeScore==null||m.awayScore==null)return null;if(m.homeScore>m.awayScore)return m.home;if(m.awayScore>m.homeScore)return m.away;return null;}
 const TIER_RANK = { MLS: 0, "USL-C": 1, USL1: 2, MLSNP: 3, USL2: 4, AM: 5 };
 function isCupset(m) {
   if (m.status !== "ft") return false;
