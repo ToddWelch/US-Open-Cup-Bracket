@@ -15,7 +15,7 @@ const USL1_L=["AV ALTA FC","Charlotte Independence","Chattanooga Red Wolves SC",
 const MLSNP_L=["Carolina Core FC","Chattanooga FC"];
 const USL2_L=["Vermont Green FC","Flint City Bucks","Steel City FC","Ventura County Fusion","Des Moines Menace","Northern Virginia FC","Asheville City SC","Flower City Union","West Chester United SC"];
 function getTier(t){if(!t)return null;if(MLS_L.some(m=>t.includes(m)||m.includes(t)))return"MLS";if(USLC_L.some(m=>t.includes(m)||m.includes(t)))return"USL-C";if(USL1_L.some(m=>t.includes(m)||m.includes(t)))return"USL1";if(MLSNP_L.some(m=>t===m))return"MLSNP";if(USL2_L.some(m=>t.includes(m)||m.includes(t)))return"USL2";return"AM";}
-function getWinner(m){if(m.homeScore==null||m.awayScore==null)return null;return m.homeScore>m.awayScore?m.home:m.away;}
+function getWinner(m){if(m.winner)return m.winner;if(m.homeScore==null||m.awayScore==null)return null;if(m.homeScore>m.awayScore)return m.home;if(m.awayScore>m.homeScore)return m.away;return null;}
 const TIER_RANK = { MLS: 0, "USL-C": 1, USL1: 2, MLSNP: 3, USL2: 4, AM: 5 };
 function isCupset(m) {
   if (m.status !== "ft") return false;
@@ -357,15 +357,26 @@ export default function App() {
     }
   }, []);
 
-  // Initial fetch + poll every 5 minutes
+  // Ref to hold latest bracket for reading inside timeout without re-subscribing
+  const latestBracketRef = useRef(bracket);
+  useEffect(() => { latestBracketRef.current = bracket; }, [bracket]);
+
+  // Adaptive polling: 30s when live games detected or during ET evening window, 5min otherwise
   useEffect(() => {
-    fetchBracket();
-    // Poll every 30s during evening game windows (6pm-midnight ET), otherwise every 5min
-    const now = new Date();
-    const etHour = new Date(now.toLocaleString("en-US", { timeZone: "America/New_York" })).getHours();
-    const pollMs = (etHour >= 18 && etHour < 24) ? 30 * 1000 : 5 * 60 * 1000;
-    const interval = setInterval(fetchBracket, pollMs);
-    return () => clearInterval(interval);
+    let timeoutId;
+    const poll = async () => {
+      await fetchBracket();
+      const now = new Date();
+      const etHour = new Date(now.toLocaleString("en-US", { timeZone: "America/New_York" })).getHours();
+      const hasLive = latestBracketRef.current?.rounds?.some(r =>
+        r.matches?.some(m => m.status === "live")
+      );
+      const pollMs = (hasLive || (etHour >= 18 && etHour < 24)) ? 30_000 : 300_000;
+      timeoutId = setTimeout(poll, pollMs);
+    };
+    // Initial fetch immediate, then start polling chain
+    poll();
+    return () => clearTimeout(timeoutId);
   }, [fetchBracket]);
 
   if (error && !bracket) {
@@ -588,7 +599,7 @@ export default function App() {
             <text x={finalX - 20} y={finalY + FINAL_SIZE.ch * 0.65 + 10} textAnchor="end" fill="#C2002F88" fontSize={10} fontFamily="monospace">LOWER</text>
 
             {/* Final Box */}
-            <Cell match={null} x={finalX} y={finalY} roundIdx={6} isChamp />
+            <Cell match={bracket.rounds[6]?.matches?.[0] || null} x={finalX} y={finalY} roundIdx={6} isChamp />
 
             {/* Trophy */}
             <text x={finalX + FINAL_SIZE.cw / 2} y={finalY - 12} textAnchor="middle" fontSize={26}>&#127942;</text>
@@ -715,9 +726,10 @@ export default function App() {
               <strong style={{ color: "#15192B" }}>Primary:</strong> ESPN public scoreboard API, queried by date range per round.{" "}
               <strong style={{ color: "#15192B" }}>Backup:</strong> Wikipedia API, parsing structured wikitext football box templates.{" "}
               <strong style={{ color: "#15192B" }}>Fallback:</strong> Direct scraping of ussoccer.com with BeautifulSoup.
-              Existing data is never overwritten with fewer matches. APScheduler runs every 2 hours, increasing to every 30 minutes
-              during game windows (6 PM - midnight ET). The frontend polls every 5 minutes.
-              Per-source health status is tracked and displayed on every scrape cycle.
+              Existing data is never overwritten with fewer matches. APScheduler runs a full scrape every 2 hours.
+              On days with scheduled matches, ESPN-only fast polls run every 2 minutes during game windows
+              (6 PM to midnight ET). The frontend polls every 5 minutes, increasing to every 30 seconds
+              when live games are detected. Per-source health status is tracked and displayed on every scrape cycle.
             </p>
           </div>
 

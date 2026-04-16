@@ -11,5 +11,11 @@ COPY requirements.txt .
 RUN pip install --no-cache-dir -r requirements.txt
 COPY backend/ ./backend/
 COPY --from=frontend-build /app/frontend/dist ./frontend/dist
+
+RUN useradd --create-home appuser \
+    && mkdir -p /app/backend/data \
+    && chown -R appuser:appuser /app
+USER appuser
+
 EXPOSE 8080
 CMD ["gunicorn", "--bind", "0.0.0.0:8080", "--chdir", "backend", "app:app"]

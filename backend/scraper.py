@@ -2,6 +2,8 @@ import json
 import os
 import re
 import logging
+import tempfile
+import threading
 from datetime import datetime, timezone
 
 import requests
@@ -11,6 +13,8 @@ logger = logging.getLogger(__name__)
 
 DATA_DIR = os.path.join(os.path.dirname(__file__), "data")
 BRACKET_FILE = os.path.join(DATA_DIR, "bracket.json")
+
+_write_lock = threading.Lock()
 
 # ESPN public API for US Open Cup
 ESPN_BASE = "https://site.api.espn.com/apis/site/v2/sports/soccer/usa.open/scoreboard"
@@ -53,9 +57,28 @@ def load_existing():
 
 
 def save_bracket(data):
+    """Write bracket data atomically using a temp file and os.replace.
+    A threading lock prevents concurrent writes from the scheduler and
+    request handlers clobbering each other."""
     os.makedirs(DATA_DIR, exist_ok=True)
-    with open(BRACKET_FILE, "w") as f:
-        json.dump(data, f, indent=2)
+    with _write_lock:
+        fd = None
+        try:
+            fd = tempfile.NamedTemporaryFile(
+                dir=DATA_DIR, mode="w", suffix=".tmp", delete=False
+            )
+            json.dump(data, fd, indent=2)
+            fd.flush()
+            os.fsync(fd.fileno())
+            fd.close()
+            os.replace(fd.name, BRACKET_FILE)
+        except Exception:
+            if fd is not None:
+                try:
+                    os.unlink(fd.name)
+                except OSError:
+                    pass
+            raise
 
 
 def count_matches(data):
@@ -76,6 +99,50 @@ def send_slack_alert(message):
         logger.info("Slack alert sent")
     except Exception as e:
         logger.error("Slack alert failed: %s", e)
+
+
+def has_games_today(bracket_data):
+    """Check whether any games are scheduled or live today (Eastern Time).
+
+    Accepts pre-loaded bracket data to avoid a redundant file read.
+    Returns True if polling should proceed, False to skip.
+    """
+    from zoneinfo import ZoneInfo
+
+    et = ZoneInfo("America/New_York")
+    today = datetime.now(et).strftime("%Y%m%d")
+
+    # No data yet: default to polling so we pick up initial results
+    if bracket_data is None:
+        return True
+
+    rounds = bracket_data.get("rounds", [])
+
+    for rnd in rounds:
+        for m in rnd.get("matches", []):
+            # Any live game means we should keep polling (handles past-midnight)
+            if m.get("status") == "live":
+                return True
+
+            # Check individual match gameTime (ISO string) in Eastern Time
+            gt = m.get("gameTime")
+            if gt:
+                try:
+                    dt = datetime.fromisoformat(gt.replace("Z", "+00:00"))
+                    if dt.astimezone(et).strftime("%Y%m%d") == today:
+                        return True
+                except (ValueError, TypeError):
+                    pass
+
+    # Fall back to ROUND_META date ranges (calendar dates in ET)
+    for meta in ROUND_META:
+        date_range = meta.get("dates", "")
+        if "-" in date_range:
+            parts = date_range.split("-")
+            if len(parts) == 2 and parts[0] <= today <= parts[1]:
+                return True
+
+    return False
 
 
 def scrape_espn_fast():
@@ -123,22 +190,43 @@ def scrape_bracket():
     ]
 
     source_results = []
-    matches = []
-    source_used = None
+    all_results = {}
 
     for name, fetcher in sources:
         try:
             result = fetcher()
             if result:
                 source_results.append({"name": name, "status": "ok", "matches": len(result)})
-                if not matches:
-                    matches = result
-                    source_used = name
+                all_results[name] = result
             else:
                 source_results.append({"name": name, "status": "no_data", "matches": 0})
         except Exception as e:
             source_results.append({"name": name, "status": "error", "error": str(e), "matches": 0})
             logger.warning("%s failed: %s", name, e)
+
+    # Select the source with the most matches. On ties, preserve priority
+    # order (ESPN > Wikipedia > ussoccer.com) since sources are iterated in
+    # that order and max() with key is stable.
+    matches = []
+    source_used = None
+    if all_results:
+        priority_order = [name for name, _ in sources]
+        best_name = max(
+            all_results,
+            key=lambda n: (len(all_results[n]), -priority_order.index(n)),
+        )
+        matches = all_results[best_name]
+        source_used = best_name
+
+        # Log comparison across all sources
+        comparison = ", ".join(
+            f"{name}={len(all_results[name])}" if name in all_results else f"{name}=0"
+            for name, _ in sources
+        )
+        logger.info(
+            "Source comparison: %s. Using %s (%d matches)",
+            comparison, source_used, len(matches),
+        )
 
     # Count failures (error or no_data)
     failures = sum(1 for s in source_results if s["status"] != "ok")
@@ -233,11 +321,14 @@ def parse_espn_event(event):
         competitors = competition["competitors"]
 
         home = away = None
+        explicit_winner = None
         for team in competitors:
             entry = {
                 "name": team["team"]["displayName"],
                 "score": int(team.get("score", 0)) if team.get("score") is not None else None,
             }
+            if team.get("winner", False):
+                explicit_winner = entry["name"]
             if team.get("homeAway") == "home":
                 home = entry
             else:
@@ -255,7 +346,8 @@ def parse_espn_event(event):
         # known non-live set as live so new states are handled automatically.
         NOT_LIVE_STATES = {
             "STATUS_SCHEDULED", "STATUS_POSTPONED", "STATUS_CANCELED",
-            "STATUS_FINAL", "STATUS_FULL_TIME", "STATUS_ABANDONED", "",
+            "STATUS_FINAL", "STATUS_FULL_TIME", "STATUS_ABANDONED",
+            "STATUS_FINAL_PEN", "STATUS_FINAL_AET", "",
         }
         is_live = not is_complete and state not in NOT_LIVE_STATES
 
@@ -271,10 +363,10 @@ def parse_espn_event(event):
         note = None
         clock = None
         detail = status.get("type", {}).get("detail", "")
-        if "After Extra Time" in detail:
-            note = "AET"
-        elif "Penalties" in detail:
+        if state == "STATUS_FINAL_PEN" or "Penalties" in detail:
             note = "PEN"
+        elif state == "STATUS_FINAL_AET" or "After Extra Time" in detail:
+            note = "AET"
         elif not is_complete and not is_live and state != "STATUS_FINAL":
             if date_display:
                 note = dt.strftime("%b %d")
@@ -310,6 +402,7 @@ def parse_espn_event(event):
             "status": match_status,
             "clock": clock,
             "gameTime": game_time,
+            "winner": explicit_winner if is_complete else None,
         }
 
     except (KeyError, IndexError, TypeError) as e:
@@ -472,6 +565,95 @@ def parse_wiki_box(box):
 
 # ─── US SOCCER FALLBACK (BACKUP 3) ────────────────────────────────────
 
+# Regex for trailing notation such as (Forfeit), (AET), (AET & PKs), (PKs), (PEN)
+_NOTATION_RE = re.compile(
+    r'\s*\((?:Forfeit|FF|AET\s*&\s*PKs|AET|PKs?|PEN)\)\s*$',
+    re.IGNORECASE,
+)
+
+# Also handle trailing "w/o" or "walkover" text
+_WALKOVER_RE = re.compile(r'\s+(?:w/o|walkover)\s*$', re.IGNORECASE)
+
+# Scoreline regex: HomeTeam <score> [(<pen>)] - <score> [(<pen>)] AwayTeam
+_SCORELINE_RE = re.compile(
+    r'^(.+?)\s+(\d+)\s*(?:\((\d+)\))?\s*-\s*(\d+)\s*(?:\((\d+)\))?\s+(.+?)$'
+)
+
+
+def parse_scoreline(text):
+    """Parse a single scoreline string into a match dict.
+
+    Handles notation like (Forfeit), (AET), (AET & PKs), (PEN), and
+    penalty shootout scores in parentheses. Returns None if the text
+    cannot be parsed.
+    """
+    if not text or not text.strip():
+        return None
+
+    # Normalize whitespace: collapse runs of spaces, strip edges
+    cleaned = re.sub(r'\s+', ' ', text).strip()
+
+    # Strip and capture trailing notation BEFORE applying scoreline regex.
+    # This prevents notation text from polluting the away team name.
+    notation_text = None
+    notation_match = _NOTATION_RE.search(cleaned)
+    if notation_match:
+        notation_text = notation_match.group(0).strip().strip('()')
+        cleaned = cleaned[:notation_match.start()].strip()
+    else:
+        walkover_match = _WALKOVER_RE.search(cleaned)
+        if walkover_match:
+            notation_text = walkover_match.group(0).strip()
+            cleaned = cleaned[:walkover_match.start()].strip()
+
+    # Apply the scoreline regex to the cleaned (notation-free) text
+    m = _SCORELINE_RE.match(cleaned)
+    if not m:
+        return None
+
+    home_name = m.group(1).strip()
+    home_score = int(m.group(2))
+    home_pen = int(m.group(3)) if m.group(3) else None
+    away_score = int(m.group(4))
+    away_pen = int(m.group(5)) if m.group(5) else None
+    away_name = m.group(6).strip()
+
+    # Determine the note field from captured notation and penalty scores
+    note = None
+    if notation_text:
+        nt_lower = notation_text.lower()
+        if 'forfeit' in nt_lower or nt_lower == 'ff':
+            note = "FF"
+        elif 'pk' in nt_lower or nt_lower == 'pen':
+            note = "PEN"
+        elif 'aet' in nt_lower:
+            # "AET & PKs" already handled above via 'pks' check;
+            # plain "AET" falls here
+            note = "AET"
+        elif 'w/o' in nt_lower or 'walkover' in nt_lower:
+            note = "FF"
+
+    # If penalty score groups are present but no notation was found, infer PEN
+    if (home_pen is not None or away_pen is not None) and note is None:
+        note = "PEN"
+
+    # If penalty scores are present alongside AET notation, upgrade to PEN
+    # because penalty kicks take precedence in describing the result
+    if note == "AET" and (home_pen is not None or away_pen is not None):
+        note = "PEN"
+
+    return {
+        "home": home_name,
+        "away": away_name,
+        "homeScore": home_score,
+        "awayScore": away_score,
+        "homePen": home_pen,
+        "awayPen": away_pen,
+        "date": None,
+        "note": note,
+    }
+
+
 def fetch_ussoccer():
     """Scrape ussoccer.com schedule page as last resort."""
     try:
@@ -490,52 +672,89 @@ def fetch_ussoccer():
 
 
 def parse_ussoccer(soup):
-    """Parse match data from ussoccer.com schedule page."""
-    matches = []
+    """Parse match data from ussoccer.com schedule page.
 
-    rows = soup.select("table tbody tr")
-    if not rows:
-        rows = soup.select(".schedule-list .match, .match-row, [data-match]")
+    Tries multiple CSS selectors in priority order to handle page
+    structure changes gracefully.
+    """
+    selectors = [
+        ("table tbody tr", "table"),
+        (".schedule-list .match, .match-row, [data-match]", "list"),
+    ]
 
-    for row in rows:
-        try:
-            cells = row.find_all("td") if row.name == "tr" else None
-            if cells and len(cells) >= 3:
-                match = parse_ussoccer_row(cells)
-                if match:
-                    matches.append(match)
-        except Exception as e:
-            logger.debug("Skipping ussoccer row: %s", e)
+    for selector, label in selectors:
+        rows = soup.select(selector)
+        if not rows:
             continue
 
-    return matches
+        logger.info("ussoccer.com: using '%s' selector (%d elements)", label, len(rows))
+        matches = []
+
+        for row in rows:
+            try:
+                if row.name == "tr":
+                    cells = row.find_all("td")
+                    if cells and len(cells) >= 1:
+                        match = parse_ussoccer_row(cells)
+                        if match:
+                            matches.append(match)
+                else:
+                    # Non-table element: extract text and try parse_scoreline
+                    text = row.get_text(" ", strip=True)
+                    match = parse_scoreline(text)
+                    if match:
+                        matches.append(match)
+            except Exception as e:
+                logger.debug("Skipping ussoccer row: %s", e)
+                continue
+
+        if matches:
+            return matches
+
+    logger.warning("ussoccer.com: no selectors produced matches")
+    return []
 
 
 def parse_ussoccer_row(cells):
-    """Parse a table row from ussoccer.com into a match dict."""
-    text = [c.get_text(strip=True) for c in cells]
+    """Parse a table row from ussoccer.com into a match dict.
 
-    for t in text:
-        parts = t.split(" - ")
-        if len(parts) == 2:
-            left = parts[0].rsplit(" ", 1)
-            right = parts[1].split(" ", 1)
-            if len(left) == 2 and len(right) == 2:
-                try:
-                    home_score = int(left[1])
-                    away_score = int(right[0])
-                    return {
-                        "home": left[0].strip(),
-                        "away": right[1].strip(),
-                        "homeScore": home_score,
-                        "awayScore": away_score,
-                        "date": None,
-                        "note": None,
-                    }
-                except ValueError:
-                    continue
+    Tries joining all cell text for parse_scoreline, then falls back to
+    individual cell text. Also checks for bold tags to detect the winner.
+    """
+    # Strategy 1: join all cell text and try parse_scoreline
+    joined = " ".join(c.get_text(strip=True) for c in cells)
+    match = parse_scoreline(joined)
 
-    return None
+    # Strategy 2: try each cell individually
+    if not match:
+        for cell in cells:
+            text = cell.get_text(strip=True)
+            match = parse_scoreline(text)
+            if match:
+                break
+
+    if not match:
+        return None
+
+    # Bold-tag winner detection: check raw BeautifulSoup Tag objects for <b>
+    # tags. The bolded text might wrap a team name, a score, or both. We
+    # extract it and match against home/away names to set a winner field.
+    winner = None
+    for cell in cells:
+        bold_tag = cell.find("b")
+        if bold_tag:
+            bold_text = bold_tag.get_text(strip=True)
+            if bold_text and match.get("home") and bold_text in match["home"]:
+                winner = match["home"]
+                break
+            if bold_text and match.get("away") and bold_text in match["away"]:
+                winner = match["away"]
+                break
+
+    if winner:
+        match["winner"] = winner
+
+    return match
 
 
 # ─── BRACKET BUILDER ──────────────────────────────────────────────────

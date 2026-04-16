@@ -4,7 +4,7 @@ from datetime import datetime
 from apscheduler.schedulers.background import BackgroundScheduler
 from apscheduler.triggers.cron import CronTrigger
 
-from scraper import scrape_bracket, scrape_espn_fast
+from scraper import scrape_bracket, scrape_espn_fast, load_existing, has_games_today
 
 logging.basicConfig(level=logging.INFO)
 logger = logging.getLogger(__name__)
@@ -26,6 +26,10 @@ def run_fast_poll():
     now = datetime.now()
     logger.info("ESPN fast poll at %s", now.isoformat())
     try:
+        existing = load_existing()
+        if not has_games_today(existing):
+            logger.info("No games today, skipping fast poll")
+            return
         scrape_espn_fast()
         logger.info("ESPN fast poll completed at %s", datetime.now().isoformat())
     except Exception as e:
