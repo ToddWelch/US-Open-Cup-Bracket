@@ -3,8 +3,12 @@ import json
 import logging
 import os
 from flask import Flask, jsonify, request, send_from_directory
-from scraper import scrape_bracket, send_slack_alert
-from scheduler import init_scheduler
+try:
+    from .scraper import scrape_bracket, send_slack_alert
+    from .scheduler import init_scheduler
+except ImportError:
+    from scraper import scrape_bracket, send_slack_alert
+    from scheduler import init_scheduler
 
 logger = logging.getLogger(__name__)
 

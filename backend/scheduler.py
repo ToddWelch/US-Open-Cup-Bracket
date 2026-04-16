@@ -4,7 +4,10 @@ from datetime import datetime
 from apscheduler.schedulers.background import BackgroundScheduler
 from apscheduler.triggers.cron import CronTrigger
 
-from scraper import scrape_bracket, scrape_espn_fast, load_existing, has_games_today
+try:
+    from .scraper import scrape_bracket, scrape_espn_fast, load_existing, has_games_today
+except ImportError:
+    from scraper import scrape_bracket, scrape_espn_fast, load_existing, has_games_today
 
 logging.basicConfig(level=logging.INFO)
 logger = logging.getLogger(__name__)
