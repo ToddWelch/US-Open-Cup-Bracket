@@ -357,15 +357,26 @@ export default function App() {
     }
   }, []);
 
-  // Initial fetch + poll every 5 minutes
+  // Ref to hold latest bracket for reading inside timeout without re-subscribing
+  const latestBracketRef = useRef(bracket);
+  useEffect(() => { latestBracketRef.current = bracket; }, [bracket]);
+
+  // Adaptive polling: 30s when live games detected or during ET evening window, 5min otherwise
   useEffect(() => {
-    fetchBracket();
-    // Poll every 30s during evening game windows (6pm-midnight ET), otherwise every 5min
-    const now = new Date();
-    const etHour = new Date(now.toLocaleString("en-US", { timeZone: "America/New_York" })).getHours();
-    const pollMs = (etHour >= 18 && etHour < 24) ? 30 * 1000 : 5 * 60 * 1000;
-    const interval = setInterval(fetchBracket, pollMs);
-    return () => clearInterval(interval);
+    let timeoutId;
+    const poll = async () => {
+      await fetchBracket();
+      const now = new Date();
+      const etHour = new Date(now.toLocaleString("en-US", { timeZone: "America/New_York" })).getHours();
+      const hasLive = latestBracketRef.current?.rounds?.some(r =>
+        r.matches?.some(m => m.status === "live")
+      );
+      const pollMs = (hasLive || (etHour >= 18 && etHour < 24)) ? 30_000 : 300_000;
+      timeoutId = setTimeout(poll, pollMs);
+    };
+    // Initial fetch immediate, then start polling chain
+    poll();
+    return () => clearTimeout(timeoutId);
   }, [fetchBracket]);
 
   if (error && !bracket) {
