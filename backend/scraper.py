@@ -146,22 +146,43 @@ def scrape_bracket():
     ]
 
     source_results = []
-    matches = []
-    source_used = None
+    all_results = {}
 
     for name, fetcher in sources:
         try:
             result = fetcher()
             if result:
                 source_results.append({"name": name, "status": "ok", "matches": len(result)})
-                if not matches:
-                    matches = result
-                    source_used = name
+                all_results[name] = result
             else:
                 source_results.append({"name": name, "status": "no_data", "matches": 0})
         except Exception as e:
             source_results.append({"name": name, "status": "error", "error": str(e), "matches": 0})
             logger.warning("%s failed: %s", name, e)
+
+    # Select the source with the most matches. On ties, preserve priority
+    # order (ESPN > Wikipedia > ussoccer.com) since sources are iterated in
+    # that order and max() with key is stable.
+    matches = []
+    source_used = None
+    if all_results:
+        priority_order = [name for name, _ in sources]
+        best_name = max(
+            all_results,
+            key=lambda n: (len(all_results[n]), -priority_order.index(n)),
+        )
+        matches = all_results[best_name]
+        source_used = best_name
+
+        # Log comparison across all sources
+        comparison = ", ".join(
+            f"{name}={len(all_results[name])}" if name in all_results else f"{name}=0"
+            for name, _ in sources
+        )
+        logger.info(
+            "Source comparison: %s. Using %s (%d matches)",
+            comparison, source_used, len(matches),
+        )
 
     # Count failures (error or no_data)
     failures = sum(1 for s in source_results if s["status"] != "ok")
