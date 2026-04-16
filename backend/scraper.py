@@ -101,6 +101,50 @@ def send_slack_alert(message):
         logger.error("Slack alert failed: %s", e)
 
 
+def has_games_today(bracket_data):
+    """Check whether any games are scheduled or live today (Eastern Time).
+
+    Accepts pre-loaded bracket data to avoid a redundant file read.
+    Returns True if polling should proceed, False to skip.
+    """
+    from zoneinfo import ZoneInfo
+
+    et = ZoneInfo("America/New_York")
+    today = datetime.now(et).strftime("%Y%m%d")
+
+    # No data yet: default to polling so we pick up initial results
+    if bracket_data is None:
+        return True
+
+    rounds = bracket_data.get("rounds", [])
+
+    for rnd in rounds:
+        for m in rnd.get("matches", []):
+            # Any live game means we should keep polling (handles past-midnight)
+            if m.get("status") == "live":
+                return True
+
+            # Check individual match gameTime (ISO string) in Eastern Time
+            gt = m.get("gameTime")
+            if gt:
+                try:
+                    dt = datetime.fromisoformat(gt.replace("Z", "+00:00"))
+                    if dt.astimezone(et).strftime("%Y%m%d") == today:
+                        return True
+                except (ValueError, TypeError):
+                    pass
+
+    # Fall back to ROUND_META date ranges (calendar dates in ET)
+    for meta in ROUND_META:
+        date_range = meta.get("dates", "")
+        if "-" in date_range:
+            parts = date_range.split("-")
+            if len(parts) == 2 and parts[0] <= today <= parts[1]:
+                return True
+
+    return False
+
+
 def scrape_espn_fast():
     """ESPN-only fast poll for live game updates. Skips Wikipedia/ussoccer."""
     existing = load_existing()

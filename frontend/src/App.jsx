@@ -715,9 +715,10 @@ export default function App() {
               <strong style={{ color: "#15192B" }}>Primary:</strong> ESPN public scoreboard API, queried by date range per round.{" "}
               <strong style={{ color: "#15192B" }}>Backup:</strong> Wikipedia API, parsing structured wikitext football box templates.{" "}
               <strong style={{ color: "#15192B" }}>Fallback:</strong> Direct scraping of ussoccer.com with BeautifulSoup.
-              Existing data is never overwritten with fewer matches. APScheduler runs every 2 hours, increasing to every 30 minutes
-              during game windows (6 PM - midnight ET). The frontend polls every 5 minutes.
-              Per-source health status is tracked and displayed on every scrape cycle.
+              Existing data is never overwritten with fewer matches. APScheduler runs a full scrape every 2 hours.
+              On days with scheduled matches, ESPN-only fast polls run every 2 minutes during game windows
+              (6 PM to midnight ET). The frontend polls every 5 minutes, increasing to every 30 seconds
+              when live games are detected. Per-source health status is tracked and displayed on every scrape cycle.
             </p>
           </div>
 
