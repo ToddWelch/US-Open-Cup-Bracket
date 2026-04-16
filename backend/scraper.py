@@ -515,6 +515,11 @@ def parse_wiki_box(box):
     if not team1_raw or not team2_raw:
         return None
 
+    # Detect winner from Wikipedia bold markers (''' = bold in wikitext).
+    # Only reliable when exactly one team is bolded.
+    team1_is_bold = "'''" in (team1_raw or "")
+    team2_is_bold = "'''" in (team2_raw or "")
+
     def clean_team(raw):
         raw = raw.replace("'''", "")
         raw = re.sub(r'\{\{[^}]+\}\}', '', raw)
@@ -528,6 +533,13 @@ def parse_wiki_box(box):
 
     home = clean_team(team1_raw)
     away = clean_team(team2_raw)
+
+    # Winner is the bolded team (only when exactly one is bolded)
+    winner = None
+    if team1_is_bold and not team2_is_bold:
+        winner = home
+    elif team2_is_bold and not team1_is_bold:
+        winner = away
 
     score_clean = score_raw.replace('\u2013', '-').replace('\u2014', '-')
     note = None
@@ -548,6 +560,7 @@ def parse_wiki_box(box):
             "awayScore": None,
             "date": date_raw,
             "note": date_raw,
+            "winner": None,
         }
 
     home_score = int(score_match.group(1))
@@ -560,6 +573,7 @@ def parse_wiki_box(box):
         "awayScore": away_score,
         "date": date_raw,
         "note": note,
+        "winner": winner,
     }
 
 
