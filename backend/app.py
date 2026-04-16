@@ -1,3 +1,4 @@
+import hmac
 import json
 import logging
 import os
@@ -45,7 +46,7 @@ def check_admin_key():
     if not ADMIN_KEY:
         return jsonify({"error": "Endpoint not available"}), 404
     key = request.headers.get("X-Admin-Key")
-    if key != ADMIN_KEY:
+    if not key or not hmac.compare_digest(key, ADMIN_KEY):
         return jsonify({"error": "Forbidden"}), 403
     return None
 
