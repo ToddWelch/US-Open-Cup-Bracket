@@ -352,23 +352,21 @@ export default function App() {
       const data = await resp.json();
       setBracket(data);
       setError(null);
+      return data;
     } catch (e) {
       setError(e.message);
+      return null;
     }
   }, []);
-
-  // Ref to hold latest bracket for reading inside timeout without re-subscribing
-  const latestBracketRef = useRef(bracket);
-  useEffect(() => { latestBracketRef.current = bracket; }, [bracket]);
 
   // Adaptive polling: 30s when live games detected or during ET evening window, 5min otherwise
   useEffect(() => {
     let timeoutId;
     const poll = async () => {
-      await fetchBracket();
+      const data = await fetchBracket();
       const now = new Date();
       const etHour = new Date(now.toLocaleString("en-US", { timeZone: "America/New_York" })).getHours();
-      const hasLive = latestBracketRef.current?.rounds?.some(r =>
+      const hasLive = data?.rounds?.some(r =>
         r.matches?.some(m => m.status === "live")
       );
       const pollMs = (hasLive || (etHour >= 18 && etHour < 24)) ? 30_000 : 300_000;
