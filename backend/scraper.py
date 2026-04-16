@@ -521,6 +521,95 @@ def parse_wiki_box(box):
 
 # ─── US SOCCER FALLBACK (BACKUP 3) ────────────────────────────────────
 
+# Regex for trailing notation such as (Forfeit), (AET), (AET & PKs), (PKs), (PEN)
+_NOTATION_RE = re.compile(
+    r'\s*\((?:Forfeit|FF|AET\s*&\s*PKs|AET|PKs?|PEN)\)\s*$',
+    re.IGNORECASE,
+)
+
+# Also handle trailing "w/o" or "walkover" text
+_WALKOVER_RE = re.compile(r'\s+(?:w/o|walkover)\s*$', re.IGNORECASE)
+
+# Scoreline regex: HomeTeam <score> [(<pen>)] - <score> [(<pen>)] AwayTeam
+_SCORELINE_RE = re.compile(
+    r'^(.+?)\s+(\d+)\s*(?:\((\d+)\))?\s*-\s*(\d+)\s*(?:\((\d+)\))?\s+(.+?)$'
+)
+
+
+def parse_scoreline(text):
+    """Parse a single scoreline string into a match dict.
+
+    Handles notation like (Forfeit), (AET), (AET & PKs), (PEN), and
+    penalty shootout scores in parentheses. Returns None if the text
+    cannot be parsed.
+    """
+    if not text or not text.strip():
+        return None
+
+    # Normalize whitespace: collapse runs of spaces, strip edges
+    cleaned = re.sub(r'\s+', ' ', text).strip()
+
+    # Strip and capture trailing notation BEFORE applying scoreline regex.
+    # This prevents notation text from polluting the away team name.
+    notation_text = None
+    notation_match = _NOTATION_RE.search(cleaned)
+    if notation_match:
+        notation_text = notation_match.group(0).strip().strip('()')
+        cleaned = cleaned[:notation_match.start()].strip()
+    else:
+        walkover_match = _WALKOVER_RE.search(cleaned)
+        if walkover_match:
+            notation_text = walkover_match.group(0).strip()
+            cleaned = cleaned[:walkover_match.start()].strip()
+
+    # Apply the scoreline regex to the cleaned (notation-free) text
+    m = _SCORELINE_RE.match(cleaned)
+    if not m:
+        return None
+
+    home_name = m.group(1).strip()
+    home_score = int(m.group(2))
+    home_pen = int(m.group(3)) if m.group(3) else None
+    away_score = int(m.group(4))
+    away_pen = int(m.group(5)) if m.group(5) else None
+    away_name = m.group(6).strip()
+
+    # Determine the note field from captured notation and penalty scores
+    note = None
+    if notation_text:
+        nt_lower = notation_text.lower()
+        if 'forfeit' in nt_lower or nt_lower == 'ff':
+            note = "FF"
+        elif 'pks' in nt_lower or nt_lower == 'pen':
+            note = "PEN"
+        elif 'aet' in nt_lower:
+            # "AET & PKs" already handled above via 'pks' check;
+            # plain "AET" falls here
+            note = "AET"
+        elif 'w/o' in nt_lower or 'walkover' in nt_lower:
+            note = "FF"
+
+    # If penalty score groups are present but no notation was found, infer PEN
+    if (home_pen is not None or away_pen is not None) and note is None:
+        note = "PEN"
+
+    # If penalty scores are present alongside AET notation, upgrade to PEN
+    # because penalty kicks take precedence in describing the result
+    if note == "AET" and (home_pen is not None or away_pen is not None):
+        note = "PEN"
+
+    return {
+        "home": home_name,
+        "away": away_name,
+        "homeScore": home_score,
+        "awayScore": away_score,
+        "homePen": home_pen,
+        "awayPen": away_pen,
+        "date": None,
+        "note": note,
+    }
+
+
 def fetch_ussoccer():
     """Scrape ussoccer.com schedule page as last resort."""
     try:
@@ -539,52 +628,89 @@ def fetch_ussoccer():
 
 
 def parse_ussoccer(soup):
-    """Parse match data from ussoccer.com schedule page."""
-    matches = []
+    """Parse match data from ussoccer.com schedule page.
 
-    rows = soup.select("table tbody tr")
-    if not rows:
-        rows = soup.select(".schedule-list .match, .match-row, [data-match]")
+    Tries multiple CSS selectors in priority order to handle page
+    structure changes gracefully.
+    """
+    selectors = [
+        ("table tbody tr", "table"),
+        (".schedule-list .match, .match-row, [data-match]", "list"),
+    ]
 
-    for row in rows:
-        try:
-            cells = row.find_all("td") if row.name == "tr" else None
-            if cells and len(cells) >= 3:
-                match = parse_ussoccer_row(cells)
-                if match:
-                    matches.append(match)
-        except Exception as e:
-            logger.debug("Skipping ussoccer row: %s", e)
+    for selector, label in selectors:
+        rows = soup.select(selector)
+        if not rows:
             continue
 
-    return matches
+        logger.info("ussoccer.com: using '%s' selector (%d elements)", label, len(rows))
+        matches = []
+
+        for row in rows:
+            try:
+                if row.name == "tr":
+                    cells = row.find_all("td")
+                    if cells and len(cells) >= 1:
+                        match = parse_ussoccer_row(cells)
+                        if match:
+                            matches.append(match)
+                else:
+                    # Non-table element: extract text and try parse_scoreline
+                    text = row.get_text(" ", strip=True)
+                    match = parse_scoreline(text)
+                    if match:
+                        matches.append(match)
+            except Exception as e:
+                logger.debug("Skipping ussoccer row: %s", e)
+                continue
+
+        if matches:
+            return matches
+
+    logger.warning("ussoccer.com: no selectors produced matches")
+    return []
 
 
 def parse_ussoccer_row(cells):
-    """Parse a table row from ussoccer.com into a match dict."""
-    text = [c.get_text(strip=True) for c in cells]
+    """Parse a table row from ussoccer.com into a match dict.
 
-    for t in text:
-        parts = t.split(" - ")
-        if len(parts) == 2:
-            left = parts[0].rsplit(" ", 1)
-            right = parts[1].split(" ", 1)
-            if len(left) == 2 and len(right) == 2:
-                try:
-                    home_score = int(left[1])
-                    away_score = int(right[0])
-                    return {
-                        "home": left[0].strip(),
-                        "away": right[1].strip(),
-                        "homeScore": home_score,
-                        "awayScore": away_score,
-                        "date": None,
-                        "note": None,
-                    }
-                except ValueError:
-                    continue
+    Tries joining all cell text for parse_scoreline, then falls back to
+    individual cell text. Also checks for bold tags to detect the winner.
+    """
+    # Strategy 1: join all cell text and try parse_scoreline
+    joined = " ".join(c.get_text(strip=True) for c in cells)
+    match = parse_scoreline(joined)
 
-    return None
+    # Strategy 2: try each cell individually
+    if not match:
+        for cell in cells:
+            text = cell.get_text(strip=True)
+            match = parse_scoreline(text)
+            if match:
+                break
+
+    if not match:
+        return None
+
+    # Bold-tag winner detection: check raw BeautifulSoup Tag objects for <b>
+    # tags. The bolded text might wrap a team name, a score, or both. We
+    # extract it and match against home/away names to set a winner field.
+    winner = None
+    for cell in cells:
+        bold_tag = cell.find("b")
+        if bold_tag:
+            bold_text = bold_tag.get_text(strip=True)
+            if bold_text and match.get("home") and bold_text in match["home"]:
+                winner = match["home"]
+                break
+            if bold_text and match.get("away") and bold_text in match["away"]:
+                winner = match["away"]
+                break
+
+    if winner:
+        match["winner"] = winner
+
+    return match
 
 
 # ─── BRACKET BUILDER ──────────────────────────────────────────────────
