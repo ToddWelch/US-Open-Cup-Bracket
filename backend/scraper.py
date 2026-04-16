@@ -117,6 +117,7 @@ def has_games_today(bracket_data):
         return True
 
     rounds = bracket_data.get("rounds", [])
+    any_game_time = False
 
     for rnd in rounds:
         for m in rnd.get("matches", []):
@@ -127,6 +128,7 @@ def has_games_today(bracket_data):
             # Check individual match gameTime (ISO string) in Eastern Time
             gt = m.get("gameTime")
             if gt:
+                any_game_time = True
                 try:
                     dt = datetime.fromisoformat(gt.replace("Z", "+00:00"))
                     if dt.astimezone(et).strftime("%Y%m%d") == today:
@@ -134,7 +136,11 @@ def has_games_today(bracket_data):
                 except (ValueError, TypeError):
                     pass
 
-    # Fall back to ROUND_META date ranges (calendar dates in ET)
+    # If ESPN has provided gameTime data, trust it over broad date ranges
+    if any_game_time:
+        return False
+
+    # Fall back to ROUND_META date ranges (only when no gameTime data exists)
     for meta in ROUND_META:
         date_range = meta.get("dates", "")
         if "-" in date_range:
