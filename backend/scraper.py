@@ -2,6 +2,8 @@ import json
 import os
 import re
 import logging
+import tempfile
+import threading
 from datetime import datetime, timezone
 
 import requests
@@ -11,6 +13,8 @@ logger = logging.getLogger(__name__)
 
 DATA_DIR = os.path.join(os.path.dirname(__file__), "data")
 BRACKET_FILE = os.path.join(DATA_DIR, "bracket.json")
+
+_write_lock = threading.Lock()
 
 # ESPN public API for US Open Cup
 ESPN_BASE = "https://site.api.espn.com/apis/site/v2/sports/soccer/usa.open/scoreboard"
@@ -53,9 +57,28 @@ def load_existing():
 
 
 def save_bracket(data):
+    """Write bracket data atomically using a temp file and os.replace.
+    A threading lock prevents concurrent writes from the scheduler and
+    request handlers clobbering each other."""
     os.makedirs(DATA_DIR, exist_ok=True)
-    with open(BRACKET_FILE, "w") as f:
-        json.dump(data, f, indent=2)
+    with _write_lock:
+        fd = None
+        try:
+            fd = tempfile.NamedTemporaryFile(
+                dir=DATA_DIR, mode="w", suffix=".tmp", delete=False
+            )
+            json.dump(data, fd, indent=2)
+            fd.flush()
+            os.fsync(fd.fileno())
+            fd.close()
+            os.replace(fd.name, BRACKET_FILE)
+        except Exception:
+            if fd is not None:
+                try:
+                    os.unlink(fd.name)
+                except OSError:
+                    pass
+            raise
 
 
 def count_matches(data):

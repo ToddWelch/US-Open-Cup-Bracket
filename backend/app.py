@@ -18,8 +18,12 @@ BRACKET_FILE = os.path.join(DATA_DIR, "bracket.json")
 def load_bracket():
     if not os.path.exists(BRACKET_FILE):
         return None
-    with open(BRACKET_FILE, "r") as f:
-        return json.load(f)
+    try:
+        with open(BRACKET_FILE, "r") as f:
+            return json.load(f)
+    except (json.JSONDecodeError, OSError) as e:
+        logger.warning("Failed to read bracket.json: %s", e)
+        return None
 
 
 @app.route("/api/bracket")
