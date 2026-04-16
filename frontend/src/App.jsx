@@ -722,10 +722,10 @@ export default function App() {
           <div style={{ background: "#fff", border: "1px solid #e0e0e0", borderRadius: 6, padding: 16 }}>
             <div style={{ fontSize: 12, fontWeight: 800, color: "#C2002F", fontFamily: "monospace", letterSpacing: "0.12em", marginBottom: 8 }}>LIVE DATA PIPELINE</div>
             <p style={{ fontSize: 15, color: "#555", lineHeight: 1.7, margin: 0 }}>
-              Scores update automatically through a triple-redundant pipeline.{" "}
+              Scores update automatically through a multi-source pipeline.{" "}
               <strong style={{ color: "#15192B" }}>Primary:</strong> ESPN public scoreboard API, queried by date range per round.{" "}
               <strong style={{ color: "#15192B" }}>Backup:</strong> Wikipedia API, parsing structured wikitext football box templates.{" "}
-              <strong style={{ color: "#15192B" }}>Fallback:</strong> Direct scraping of ussoccer.com with BeautifulSoup.
+              <strong style={{ color: "#15192B" }}>Supplemental:</strong> Best-effort scraping of ussoccer.com (page structure changes frequently).
               Existing data is never overwritten with fewer matches. APScheduler runs a full scrape every 2 hours.
               On days with scheduled matches, ESPN-only fast polls run every 2 minutes during game windows
               (6 PM to midnight ET). The frontend polls every 5 minutes, increasing to every 30 seconds

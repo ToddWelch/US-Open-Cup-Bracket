@@ -577,7 +577,7 @@ def parse_wiki_box(box):
     }
 
 
-# ─── US SOCCER FALLBACK (BACKUP 3) ────────────────────────────────────
+# ─── US SOCCER SUPPLEMENTAL (BEST-EFFORT) ────────────────────────────
 
 # Regex for trailing notation such as (Forfeit), (AET), (AET & PKs), (PKs), (PEN)
 _NOTATION_RE = re.compile(
@@ -669,7 +669,12 @@ def parse_scoreline(text):
 
 
 def fetch_ussoccer():
-    """Scrape ussoccer.com schedule page as last resort."""
+    """Best-effort scrape of ussoccer.com schedule page.
+
+    This is a supplemental source, not a reliable fallback. The page
+    structure changes frequently and the parser may return zero matches.
+    ESPN and Wikipedia are the primary and backup sources respectively.
+    """
     try:
         resp = requests.get(USSOCCER_URL, timeout=15, headers=BROWSER_HEADERS)
         resp.raise_for_status()
@@ -686,10 +691,11 @@ def fetch_ussoccer():
 
 
 def parse_ussoccer(soup):
-    """Parse match data from ussoccer.com schedule page.
+    """Best-effort parse of match data from ussoccer.com schedule page.
 
     Tries multiple CSS selectors in priority order to handle page
-    structure changes gracefully.
+    structure changes gracefully. This parser is supplemental; the
+    page layout shifts often and may yield zero usable rows.
     """
     selectors = [
         ("table tbody tr", "table"),
