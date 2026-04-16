@@ -21,6 +21,11 @@ class TestStandardScore:
 
 
 class TestPenalties:
+    def test_pk_singular_notation(self):
+        result = parse_scoreline("Team A 1 (4) - 1 (2) Team B (PK)")
+        assert result is not None
+        assert result["note"] == "PEN"
+
     def test_penalty_parentheticals(self):
         result = parse_scoreline(
             "New England Revolution 1 (3) - 1 (1) Rhode Island FC"

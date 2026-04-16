@@ -580,7 +580,7 @@ def parse_scoreline(text):
         nt_lower = notation_text.lower()
         if 'forfeit' in nt_lower or nt_lower == 'ff':
             note = "FF"
-        elif 'pks' in nt_lower or nt_lower == 'pen':
+        elif 'pk' in nt_lower or nt_lower == 'pen':
             note = "PEN"
         elif 'aet' in nt_lower:
             # "AET & PKs" already handled above via 'pks' check;
