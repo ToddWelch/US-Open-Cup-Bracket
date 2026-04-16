@@ -588,7 +588,7 @@ export default function App() {
             <text x={finalX - 20} y={finalY + FINAL_SIZE.ch * 0.65 + 10} textAnchor="end" fill="#C2002F88" fontSize={10} fontFamily="monospace">LOWER</text>
 
             {/* Final Box */}
-            <Cell match={null} x={finalX} y={finalY} roundIdx={6} isChamp />
+            <Cell match={bracket.rounds[6]?.matches?.[0] || null} x={finalX} y={finalY} roundIdx={6} isChamp />
 
             {/* Trophy */}
             <text x={finalX + FINAL_SIZE.cw / 2} y={finalY - 12} textAnchor="middle" fontSize={26}>&#127942;</text>
