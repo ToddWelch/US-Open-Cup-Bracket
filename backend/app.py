@@ -1,8 +1,13 @@
 import json
+import logging
 import os
-from flask import Flask, jsonify, send_from_directory
+from flask import Flask, jsonify, request, send_from_directory
 from scraper import scrape_bracket, send_slack_alert
 from scheduler import init_scheduler
+
+logger = logging.getLogger(__name__)
+
+ADMIN_KEY = os.environ.get("ADMIN_KEY")
 
 app = Flask(__name__, static_folder="../frontend/dist", static_url_path="")
 
@@ -30,16 +35,35 @@ def api_health():
     return jsonify({"status": "ok"})
 
 
-@app.route("/api/test-alert")
+def check_admin_key():
+    """Validate the X-Admin-Key header against the ADMIN_KEY env var.
+    Returns a Flask error response tuple if validation fails, or None on success."""
+    if not ADMIN_KEY:
+        return jsonify({"error": "Endpoint not available"}), 404
+    key = request.headers.get("X-Admin-Key")
+    if key != ADMIN_KEY:
+        return jsonify({"error": "Forbidden"}), 403
+    return None
+
+
+@app.route("/api/test-alert", methods=["POST"])
 def api_test_alert():
+    auth_err = check_admin_key()
+    if auth_err:
+        return auth_err
     send_slack_alert(":test_tube: *US Open Cup Bracket - Test Alert*\nSlack integration is working.")
     return jsonify({"status": "alert sent"})
 
 
-@app.route("/api/scrape")
+@app.route("/api/scrape", methods=["POST"])
 def api_scrape():
+    auth_err = check_admin_key()
+    if auth_err:
+        return auth_err
     scrape_bracket()
     data = load_bracket()
+    if data is None:
+        return jsonify({"status": "error", "message": "Scrape produced no data"}), 500
     return jsonify({
         "status": data.get("scrapeStatus"),
         "source": data.get("scrapeSource"),
