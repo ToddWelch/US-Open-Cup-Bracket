@@ -847,6 +847,64 @@ def _reorder_feeder_round(feeder_matches, next_round_matches):
     return reordered
 
 
+def _reorder_1to1_round(feeder_matches, next_round_matches):
+    """Reorder next_round_matches so position i contains a team from feeder[i].
+
+    Used for the R2->R32 transition where each R2 winner feeds into one R32
+    match (1:1 mapping, not the usual 2:1 reduction). The frontend renders
+    R32 as a 1:1 mapping: R2[i] connects to R32[i], so R32[i] MUST contain
+    the winner of R2[i] as either home or away.
+
+    Returns a new list with corrected ordering, or the original list unchanged
+    if reordering cannot be determined.
+    """
+    if len(feeder_matches) != len(next_round_matches):
+        return next_round_matches
+
+    # Build lookup: team name -> next-round match index
+    team_to_next = {}
+    for idx, match in enumerate(next_round_matches):
+        for field in ("home", "away"):
+            name = match.get(field, "")
+            if name and name != "TBD":
+                team_to_next[name] = idx
+
+    reordered = [None] * len(next_round_matches)
+    used = set()
+
+    for i, feeder in enumerate(feeder_matches):
+        # Get winner candidates from the feeder match
+        winner = feeder.get("winner")
+        candidates = [winner] if winner else []
+        # Also check home/away as fallback candidates (winner might not be set yet)
+        for field in ("home", "away"):
+            name = feeder.get(field, "")
+            if name and name != "TBD" and name not in candidates:
+                candidates.append(name)
+
+        # Find which next-round match contains any candidate
+        for cand in candidates:
+            if cand in team_to_next:
+                nr_idx = team_to_next[cand]
+                if nr_idx not in used:
+                    reordered[i] = next_round_matches[nr_idx]
+                    used.add(nr_idx)
+                    break
+
+    # Fill remaining slots with unmatched next-round matches
+    unmatched = [j for j in range(len(next_round_matches)) if j not in used]
+    for i in range(len(reordered)):
+        if reordered[i] is None and unmatched:
+            reordered[i] = next_round_matches[unmatched.pop(0)]
+
+    if any(m is None for m in reordered):
+        logger.warning("1:1 reordering produced None entries, keeping original order")
+        return next_round_matches
+
+    logger.info("1:1 round reordered successfully (%d matches)", len(reordered))
+    return reordered
+
+
 def build_bracket(matches):
     """Organize flat matches into round structure."""
     rounds = []
@@ -862,10 +920,9 @@ def build_bracket(matches):
         })
         idx += size
 
-    # Reorder feeder rounds so positional pairing matches bracket topology.
-    # Round transitions where reordering applies:
+    # Reorder feeder rounds (2:1 reduction) so positional pairing matches
+    # bracket topology.
     #   R1 (idx 0) -> R2 (idx 1): feeder has 32 matches, next has 16
-    #   R2 (idx 1) -> R32 (idx 2): SKIP, R32 is the MLS entry round (1:1 mapping)
     #   R32 (idx 2) -> R16 (idx 3): feeder has 16 matches, next has 8
     #   R16 (idx 3) -> QF (idx 4): feeder has 8, next has 4
     #   QF (idx 4) -> SF (idx 5): feeder has 4, next has 2
@@ -891,5 +948,18 @@ def build_bracket(matches):
         except Exception as e:
             logger.error("Feeder reordering failed for rounds %d->%d: %s", feeder_idx, next_idx, e)
             # Keep original order on any unexpected error
+
+    # 1:1 reorder for R2 (idx 1) -> R32 (idx 2), the MLS entry round.
+    # This MUST run after R1->R2 reorder (pair 0,1 above) so R2 is in its
+    # final bracket-topology order before we align R32 to it.
+    # R32 has the same number of matches as R2, so the standard 2:1
+    # _reorder_feeder_round cannot be used.
+    r2 = rounds[1]["matches"]
+    r32 = rounds[2]["matches"]
+    if r2 and r32 and len(r2) == len(r32):
+        try:
+            rounds[2]["matches"] = _reorder_1to1_round(r2, r32)
+        except Exception as e:
+            logger.error("R2->R32 reordering failed: %s", e)
 
     return {"rounds": rounds}
