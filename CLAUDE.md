@@ -1,5 +1,19 @@
 # CLAUDE.md
 
+## Global rules pointer
+
+Behavior rules, orchestrator process, agent system, coding discipline,
+and infrastructure gotchas live in the global Claude config:
+
+- `/home/todd/.claude/CLAUDE.md` (always-loaded rule book)
+- `/home/todd/.claude/persona-rules.md` (Todd's identity + personal-style layer)
+
+This file (`/home/todd/projects/US-Open-Bracket/CLAUDE.md`) holds
+US-Open-Bracket-specific guidance only: a Flask + React single-page app
+displaying the 2026 Lamar Hunt U.S. Open Cup bracket in an NCAA-style
+tournament tree, with auto-updating scores via ussoccer.com scraping,
+deployed on Railway at usopencup.welchproductsllc.com.
+
 This file provides guidance to Claude Code (claude.ai/code) when working with code in this repository.
 
 ## Project Overview
