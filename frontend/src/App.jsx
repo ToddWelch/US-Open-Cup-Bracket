@@ -11,10 +11,11 @@ const TIERS = {
 };
 const MLS_L=["Atlanta United","Austin FC","Charlotte FC","Chicago Fire FC","Colorado Rapids","Columbus Crew","D.C. United","Houston Dynamo FC","Minnesota United FC","New England Revolution","New York City FC","Orlando City SC","Red Bull New York","San Jose Earthquakes","Sporting Kansas City","St. Louis CITY SC"];
 const USLC_L=["Charleston Battery","Detroit City FC","Hartford Athletic","Indy Eleven","Loudoun United FC","Louisville City FC","Pittsburgh Riverhounds SC","Rhode Island FC","Colorado Springs Switchbacks FC","El Paso Locomotive FC","FC Tulsa","Lexington SC","New Mexico United","Orange County SC","Phoenix Rising FC","Sacramento Republic FC","San Antonio FC"];
-const USL1_L=["AV ALTA FC","Charlotte Independence","Chattanooga Red Wolves SC","FC Naples","Forward Madison FC","Greenville Triumph SC","One Knoxville SC","Portland Hearts of Pine","Richmond Kickers","Spokane Velocity FC","Union Omaha","Westchester SC"];
+const USL1_L=["AV Alta FC","Charlotte Independence","Chattanooga Red Wolves SC","FC Naples","Forward Madison FC","Greenville Triumph SC","One Knoxville SC","Portland Hearts of Pine","Richmond Kickers","Spokane Velocity FC","Union Omaha","Westchester SC"];
 const MLSNP_L=["Carolina Core FC","Chattanooga FC"];
-const USL2_L=["Vermont Green FC","Flint City Bucks","Steel City FC","Ventura County Fusion","Des Moines Menace","Northern Virginia FC","Asheville City SC","Flower City Union","West Chester United SC"];
-function getTier(t){if(!t)return null;if(MLS_L.some(m=>t.includes(m)||m.includes(t)))return"MLS";if(USLC_L.some(m=>t.includes(m)||m.includes(t)))return"USL-C";if(USL1_L.some(m=>t.includes(m)||m.includes(t)))return"USL1";if(MLSNP_L.some(m=>t===m))return"MLSNP";if(USL2_L.some(m=>t.includes(m)||m.includes(t)))return"USL2";return"AM";}
+const USL2_L=["Vermont Green FC","Flint City Bucks","Steel City FC","Ventura County Fusion","Des Moines Menace","Northern Virginia FC","Asheville City SC","Flower City Union","West Chester United SC","Laredo Heat SC","Little Rock Rangers"];
+// Case-insensitive: sources spell the same club differently ("St. Louis CITY SC", "St. Louis City SC")
+function getTier(t){if(!t)return null;const n=t.toLowerCase();const inList=L=>L.some(m=>{const x=m.toLowerCase();return n.includes(x)||x.includes(n);});if(inList(MLS_L))return"MLS";if(inList(USLC_L))return"USL-C";if(inList(USL1_L))return"USL1";if(MLSNP_L.some(m=>m.toLowerCase()===n))return"MLSNP";if(inList(USL2_L))return"USL2";return"AM";}
 function getWinner(m){if(m.winner)return m.winner;if(m.homeScore==null||m.awayScore==null)return null;if(m.homeScore>m.awayScore)return m.home;if(m.awayScore>m.homeScore)return m.away;return null;}
 const TIER_RANK = { MLS: 0, "USL-C": 1, USL1: 2, MLSNP: 3, USL2: 4, AM: 5 };
 function isCupset(m) {
@@ -443,7 +444,10 @@ export default function App() {
 
   // Find the current active round: latest populated round with incomplete matches.
   // Skip rounds with 0 matches (future rounds not yet populated).
-  let currentRoundIdx = 0;
+  // With no active round, fall back to the latest fully complete round, so a
+  // finished tournament shows FINAL DONE rather than R1 DONE.
+  let currentRoundIdx = null;
+  let latestCompleteIdx = null;
   for (let i = allRounds.length - 1; i >= 0; i--) {
     const rm = allRounds[i]?.matches || [];
     if (rm.length === 0) continue;
@@ -452,9 +456,9 @@ export default function App() {
       currentRoundIdx = i;
       break;
     }
-    // All matches done in this round; keep as fallback if nothing active found
-    currentRoundIdx = i;
+    if (latestCompleteIdx === null) latestCompleteIdx = i;
   }
+  if (currentRoundIdx === null) currentRoundIdx = latestCompleteIdx ?? 0;
 
   const currentRoundMatches = allRounds[currentRoundIdx]?.matches || [];
   const totalComplete = currentRoundMatches.filter(m => getWinner(m)).length;

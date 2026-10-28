@@ -5,6 +5,7 @@ import logging
 import tempfile
 import threading
 from datetime import datetime, timezone
+from zoneinfo import ZoneInfo
 
 import requests
 from bs4 import BeautifulSoup
@@ -18,6 +19,10 @@ _write_lock = threading.Lock()
 
 # ESPN public API for US Open Cup
 ESPN_BASE = "https://site.api.espn.com/apis/site/v2/sports/soccer/usa.open/scoreboard"
+SEASON_YEAR = "2026"
+
+# Match dates are shown in Eastern Time (an 8pm ET kickoff is the next day in UTC)
+EASTERN = ZoneInfo("America/New_York")
 
 # Wikipedia API for structured match data
 WIKI_API = "https://en.wikipedia.org/w/api.php"
@@ -29,15 +34,16 @@ USSOCCER_URL = "https://www.ussoccer.com/us-open-cup/schedule"
 # Slack webhook for alerts (set via environment variable)
 SLACK_WEBHOOK_URL = os.environ.get("SLACK_WEBHOOK_URL")
 
-# Round metadata with ESPN date ranges
+# Round metadata. "dates" feeds the game-day check; "espnSlug" is the
+# season.slug ESPN puts on each event of that round (verified live 2026-10-28).
 ROUND_META = [
-    {"name": "First Round", "schedule": "Mar 17-19", "dates": "20260317-20260325"},
-    {"name": "Second Round", "schedule": "Mar 31 / Apr 1", "dates": "20260331-20260402"},
-    {"name": "Round of 32", "schedule": "Apr 14-15", "dates": "20260414-20260416"},
-    {"name": "Round of 16", "schedule": "Apr 28-29", "dates": "20260428-20260430"},
-    {"name": "Quarterfinals", "schedule": "May 19-20", "dates": "20260519-20260521"},
-    {"name": "Semifinals", "schedule": "Sep 15-16", "dates": "20260915-20260917"},
-    {"name": "Final", "schedule": "Oct 21", "dates": "20261021-20261022"},
+    {"name": "First Round", "schedule": "Mar 17-19", "dates": "20260317-20260325", "espnSlug": "first-round"},
+    {"name": "Second Round", "schedule": "Mar 31 / Apr 1", "dates": "20260331-20260402", "espnSlug": "second-round"},
+    {"name": "Round of 32", "schedule": "Apr 14-15", "dates": "20260414-20260416", "espnSlug": "round-of-32"},
+    {"name": "Round of 16", "schedule": "Apr 28-29", "dates": "20260428-20260430", "espnSlug": "round-of-16"},
+    {"name": "Quarterfinals", "schedule": "May 19-20", "dates": "20260519-20260521", "espnSlug": "quarterfinals"},
+    {"name": "Semifinals", "schedule": "Sep 15-16", "dates": "20260915-20260917", "espnSlug": "semifinals"},
+    {"name": "Final", "schedule": "Oct 21", "dates": "20261021-20261022", "espnSlug": "final"},
 ]
 
 BROWSER_HEADERS = {
@@ -207,7 +213,8 @@ def scrape_bracket():
             else:
                 source_results.append({"name": name, "status": "no_data", "matches": 0})
         except Exception as e:
-            source_results.append({"name": name, "status": "error", "error": str(e), "matches": 0})
+            # Only the exception type is stored; the file is served publicly
+            source_results.append({"name": name, "status": "error", "error": type(e).__name__, "matches": 0})
             logger.warning("%s failed: %s", name, e)
 
     # Select the source with the most matches. On ties, preserve priority
@@ -290,34 +297,43 @@ def scrape_bracket():
 
 # ─── ESPN API (PRIMARY) ───────────────────────────────────────────────
 
+def espn_params():
+    """Query params for the season scoreboard (verified live 2026-10-28).
+
+    ESPN answers a date range (dates=YYYYMMDD-YYYYMMDD) with HTTP 400, so the
+    whole season is requested by year in one call.
+    """
+    return {"dates": SEASON_YEAR, "limit": 500}
+
+
 def fetch_espn():
-    """Fetch all matches from ESPN's public scoreboard API."""
-    all_matches = []
+    """Fetch every match of the season from ESPN's public scoreboard API.
 
-    for round_info in ROUND_META:
-        try:
-            url = f"{ESPN_BASE}?dates={round_info['dates']}"
-            resp = requests.get(url, timeout=15)
-            resp.raise_for_status()
-            data = resp.json()
+    Each event is placed in its round by ESPN's season.slug, so the flat list
+    comes back in bracket round order whatever order ESPN sends it in. Request
+    and response errors propagate so scrape_bracket records them as an error.
+    """
+    resp = requests.get(ESPN_BASE, params=espn_params(), timeout=15)
+    resp.raise_for_status()
+    events = resp.json().get("events", [])
 
-            events = data.get("events", [])
-            for event in events:
-                match = parse_espn_event(event)
-                if match:
-                    all_matches.append(match)
-
-            if events:
-                logger.info("ESPN: %d matches for %s", len(events), round_info["name"])
-
-        except requests.RequestException as e:
-            logger.warning("ESPN fetch failed for %s: %s", round_info["name"], e)
+    slug_to_round = {meta["espnSlug"]: i for i, meta in enumerate(ROUND_META)}
+    by_round = [[] for _ in ROUND_META]
+    for event in events:
+        slug = (event.get("season") or {}).get("slug")
+        if slug not in slug_to_round:
+            logger.warning("ESPN: skipping event %s with unknown round slug %r", event.get("id"), slug)
             continue
-        except (KeyError, ValueError) as e:
-            logger.warning("ESPN parse error for %s: %s", round_info["name"], e)
-            continue
+        match = parse_espn_event(event)
+        if match:
+            match["round"] = slug_to_round[slug]
+            by_round[slug_to_round[slug]].append(match)
 
-    return all_matches
+    for meta, round_matches in zip(ROUND_META, by_round):
+        if round_matches:
+            logger.info("ESPN: %d matches for %s", len(round_matches), meta["name"])
+
+    return [m for round_matches in by_round for m in round_matches]
 
 
 def parse_espn_event(event):
@@ -361,7 +377,7 @@ def parse_espn_event(event):
         date_display = None
         if date_str:
             try:
-                dt = datetime.fromisoformat(date_str.replace("Z", "+00:00"))
+                dt = datetime.fromisoformat(date_str.replace("Z", "+00:00")).astimezone(EASTERN)
                 date_display = dt.strftime("%B %d")
             except ValueError:
                 pass
@@ -436,24 +452,7 @@ def fetch_wikipedia():
         logger.warning("Wikipedia sections fetch failed: %s", e)
         return []
 
-    # Map round names to section indices
-    round_keywords = {
-        "First round": 0,
-        "Second round": 1,
-        "Round of 32": 2,
-        "Round of 16": 3,
-        "Quarterfinals": 4,
-        "Quarter-finals": 4,
-        "Semifinals": 5,
-        "Semi-finals": 5,
-        "Final": 6,
-    }
-
-    section_map = {}
-    for s in sections:
-        for keyword, round_idx in round_keywords.items():
-            if keyword.lower() in s.get("line", "").lower():
-                section_map[round_idx] = s["index"]
+    section_map = map_wiki_sections(sections)
 
     if not section_map:
         logger.warning("Wikipedia: no round sections found")
@@ -476,13 +475,45 @@ def fetch_wikipedia():
 
             if matches:
                 logger.info("Wikipedia: %d matches for %s", len(matches), ROUND_META[round_idx]["name"])
+                for m in matches:
+                    m["round"] = round_idx
                 all_matches.extend(matches)
+            else:
+                logger.warning("Wikipedia: no match boxes in section %s (%s)", section_idx, ROUND_META[round_idx]["name"])
 
         except Exception as e:
             logger.warning("Wikipedia fetch failed for section %s: %s", section_idx, e)
             continue
 
     return all_matches
+
+
+# Section headings that hold each round's match boxes
+WIKI_ROUND_TITLES = {
+    "first round": 0,
+    "second round": 1,
+    "round of 32": 2,
+    "round of 16": 3,
+    "quarterfinals": 4,
+    "quarter-finals": 4,
+    "semifinals": 5,
+    "semi-finals": 5,
+    "final": 6,
+}
+
+
+def map_wiki_sections(sections):
+    """Map round index to Wikipedia section index by exact heading match.
+
+    Substring matching put "Semifinals" and "Quarterfinals and beyond" in the
+    Final slot, so a heading must equal a round title to count.
+    """
+    section_map = {}
+    for s in sections:
+        title = s.get("line", "").strip().lower()
+        if title in WIKI_ROUND_TITLES:
+            section_map[WIKI_ROUND_TITLES[title]] = s["index"]
+    return section_map
 
 
 def parse_wiki_matches(wikitext):
@@ -503,12 +534,27 @@ def parse_wiki_matches(wikitext):
     return matches
 
 
+def _hyphenate(text):
+    """Turn the en and em dashes Wikipedia uses in scores into hyphens."""
+    return text.replace(chr(0x2013), "-").replace(chr(0x2014), "-")
+
+
 def parse_wiki_box(box):
-    """Parse a single football box collapsible template."""
+    """Parse a single football box collapsible template.
+
+    The winner comes from the score, then from the penalty shootout score.
+    Bold markup is ignored: the 2026 article bolds the losing team in every
+    box, so it does not mark the winner.
+    """
     def extract(field):
-        pattern = rf'\|\s*{field}\s*=\s*(.+)'
-        m = re.search(pattern, box)
-        return m.group(1).strip() if m else None
+        # [ \t]* stops an empty field from capturing the next line
+        m = re.search(rf'\|\s*{field}\s*=[ \t]*([^\n]*)', box)
+        value = m.group(1).strip() if m else ""
+        return value or None
+
+    def score_pair(text):
+        m = re.search(r'(\d+)\s*-\s*(\d+)', _hyphenate(text))
+        return (int(m.group(1)), int(m.group(2))) if m else None
 
     score_raw = extract("score")
     if not score_raw:
@@ -520,11 +566,6 @@ def parse_wiki_box(box):
 
     if not team1_raw or not team2_raw:
         return None
-
-    # Detect winner from Wikipedia bold markers (''' = bold in wikitext).
-    # Only reliable when exactly one team is bolded.
-    team1_is_bold = "'''" in (team1_raw or "")
-    team2_is_bold = "'''" in (team2_raw or "")
 
     def clean_team(raw):
         raw = raw.replace("'''", "")
@@ -540,19 +581,12 @@ def parse_wiki_box(box):
     home = clean_team(team1_raw)
     away = clean_team(team2_raw)
 
-    # Winner is the bolded team (only when exactly one is bolded)
-    winner = None
-    if team1_is_bold and not team2_is_bold:
-        winner = home
-    elif team2_is_bold and not team1_is_bold:
-        winner = away
-
     score_clean = score_raw.replace('\u2013', '-').replace('\u2014', '-')
     note = None
 
     if "vo" in score_clean.lower() or "w/o" in score_clean.lower() or "ff" in score_clean.lower():
         note = "FF"
-    if "a.e.t" in score_clean.lower() or "aet" in score_clean.lower():
+    if "a.e.t" in score_clean.lower() or "aet" in score_clean.lower() or (extract("aet") or "").lower() == "yes":
         note = "AET"
     if "pen" in score_clean.lower():
         note = "PEN"
@@ -571,6 +605,24 @@ def parse_wiki_box(box):
 
     home_score = int(score_match.group(1))
     away_score = int(score_match.group(2))
+
+    # Shootout score: the penaltyscore field, or a second score after the
+    # first inside the score field, as in "1 - 1 (pen. 4 - 2)"
+    pen_raw = extract("penaltyscore")
+    if pen_raw:
+        pens = score_pair(pen_raw)
+    elif note == "PEN":
+        pens = score_pair(score_clean[score_match.end():])
+    else:
+        pens = None
+    if pens:
+        note = "PEN"
+
+    winner = None
+    if home_score != away_score:
+        winner = home if home_score > away_score else away
+    elif pens and pens[0] != pens[1]:
+        winner = home if pens[0] > pens[1] else away
 
     return {
         "home": home,
@@ -873,119 +925,127 @@ def _reorder_feeder_round(feeder_matches, next_round_matches):
     return reordered
 
 
-def _reorder_1to1_round(feeder_matches, next_round_matches):
-    """Reorder next_round_matches so position i contains a team from feeder[i].
+def _reorder_1to1_round(anchor_matches, matches):
+    """Reorder matches so matches[i] shares a team with anchor_matches[i].
 
     Used for the R2->R32 transition where each R2 winner feeds into one R32
     match (1:1 mapping, not the usual 2:1 reduction). The frontend renders
-    R32 as a 1:1 mapping: R2[i] connects to R32[i], so R32[i] MUST contain
-    the winner of R2[i] as either home or away.
+    it as R2[i] connecting to R32[i]. build_bracket passes R32 (already in
+    bracket order) as the anchor and R2 as the matches, so R2[i] becomes the
+    match whose winner plays in R32[i].
 
     Returns a new list with corrected ordering, or the original list unchanged
     if reordering cannot be determined.
     """
-    if len(feeder_matches) != len(next_round_matches):
-        return next_round_matches
+    if len(anchor_matches) != len(matches):
+        return matches
 
-    # Build lookup: team name -> next-round match index
-    team_to_next = {}
-    for idx, match in enumerate(next_round_matches):
+    # Build lookup: team name -> index in matches
+    team_to_idx = {}
+    for idx, match in enumerate(matches):
         for field in ("home", "away"):
             name = match.get(field, "")
             if name and name != "TBD":
-                team_to_next[name] = idx
+                team_to_idx[name] = idx
 
-    reordered = [None] * len(next_round_matches)
+    reordered = [None] * len(matches)
     used = set()
 
-    for i, feeder in enumerate(feeder_matches):
-        # Get winner candidates from the feeder match
-        winner = feeder.get("winner")
+    for i, anchor in enumerate(anchor_matches):
+        # Candidate teams from the anchor match, winner first
+        winner = anchor.get("winner")
         candidates = [winner] if winner else []
-        # Also check home/away as fallback candidates (winner might not be set yet)
         for field in ("home", "away"):
-            name = feeder.get(field, "")
+            name = anchor.get(field, "")
             if name and name != "TBD" and name not in candidates:
                 candidates.append(name)
 
-        # Find which next-round match contains any candidate
+        # Find which match contains any candidate
         for cand in candidates:
-            if cand in team_to_next:
-                nr_idx = team_to_next[cand]
-                if nr_idx not in used:
-                    reordered[i] = next_round_matches[nr_idx]
-                    used.add(nr_idx)
+            if cand in team_to_idx:
+                m_idx = team_to_idx[cand]
+                if m_idx not in used:
+                    reordered[i] = matches[m_idx]
+                    used.add(m_idx)
                     break
 
-    # Fill remaining slots with unmatched next-round matches
-    unmatched = [j for j in range(len(next_round_matches)) if j not in used]
+    # Fill remaining slots with unmatched matches
+    unmatched = [j for j in range(len(matches)) if j not in used]
     for i in range(len(reordered)):
         if reordered[i] is None and unmatched:
-            reordered[i] = next_round_matches[unmatched.pop(0)]
+            reordered[i] = matches[unmatched.pop(0)]
 
     if any(m is None for m in reordered):
         logger.warning("1:1 reordering produced None entries, keeping original order")
-        return next_round_matches
+        return matches
 
     logger.info("1:1 round reordered successfully (%d matches)", len(reordered))
     return reordered
 
 
 def build_bracket(matches):
-    """Organize flat matches into round structure."""
+    """Organize flat matches into round structure.
+
+    Matches tagged with a "round" index (ESPN, Wikipedia) are grouped on it,
+    so a missing or unparseable match cannot shift later rounds. Untagged
+    matches (ussoccer.com) are sliced by fixed round sizes in list order.
+    """
     rounds = []
-    idx = 0
     round_sizes = [32, 16, 16, 8, 4, 2, 1]
 
+    if matches and all(isinstance(m.get("round"), int) for m in matches):
+        grouped = [[m for m in matches if m["round"] == i] for i in range(len(round_sizes))]
+    else:
+        if matches:
+            logger.warning("Matches carry no round tag; slicing by fixed round sizes")
+        grouped = []
+        idx = 0
+        for size in round_sizes:
+            grouped.append(matches[idx:idx + size])
+            idx += size
+
     for i, size in enumerate(round_sizes):
-        round_matches = matches[idx:idx + size] if idx < len(matches) else []
+        if len(grouped[i]) > size:
+            logger.warning("%s has %d matches, more than the %d expected", ROUND_META[i]["name"], len(grouped[i]), size)
         rounds.append({
             "name": ROUND_META[i]["name"],
             "schedule": ROUND_META[i]["schedule"],
-            "matches": round_matches,
+            "matches": grouped[i],
         })
-        idx += size
 
-    # Reorder feeder rounds (2:1 reduction) so positional pairing matches
-    # bracket topology.
-    #   R1 (idx 0) -> R2 (idx 1): feeder has 32 matches, next has 16
-    #   R32 (idx 2) -> R16 (idx 3): feeder has 16 matches, next has 8
-    #   R16 (idx 3) -> QF (idx 4): feeder has 8, next has 4
-    #   QF (idx 4) -> SF (idx 5): feeder has 4, next has 2
-    reorder_pairs = [(0, 1), (2, 3), (3, 4), (4, 5)]
-
-    for feeder_idx, next_idx in reorder_pairs:
+    # Put every round in bracket order, working back from the Final: each
+    # feeder round is reordered to line up with the round after it, which
+    # is already in its final order. Reordering forward (R32 to R16, then
+    # R32 again to R2) undid earlier alignments and drew connector lines
+    # between matches that never fed each other.
+    #   2:1 rounds: feeder[2i] and feeder[2i+1] feed next[i]
+    #   R2 (idx 1) -> R32 (idx 2), the MLS entry round, is 1:1: R2[i] feeds R32[i]
+    for feeder_idx in range(len(rounds) - 2, -1, -1):
+        next_idx = feeder_idx + 1
         feeder_round = rounds[feeder_idx]["matches"]
         next_round = rounds[next_idx]["matches"]
 
         if not feeder_round or not next_round:
             continue
 
-        # Only reorder if feeder has exactly 2x the matches of next round
-        if len(feeder_round) != 2 * len(next_round):
-            logger.warning(
-                "Skipping reorder for rounds %d->%d: expected %d feeder matches but got %d",
-                feeder_idx, next_idx, 2 * len(next_round), len(feeder_round)
-            )
-            continue
-
         try:
-            rounds[feeder_idx]["matches"] = _reorder_feeder_round(feeder_round, next_round)
+            if feeder_idx == 1:
+                if len(feeder_round) == len(next_round):
+                    rounds[feeder_idx]["matches"] = _reorder_1to1_round(next_round, feeder_round)
+                else:
+                    logger.warning(
+                        "Skipping 1:1 reorder for rounds %d->%d: %d feeder matches but %d next",
+                        feeder_idx, next_idx, len(feeder_round), len(next_round)
+                    )
+            elif len(feeder_round) == 2 * len(next_round):
+                rounds[feeder_idx]["matches"] = _reorder_feeder_round(feeder_round, next_round)
+            else:
+                logger.warning(
+                    "Skipping reorder for rounds %d->%d: expected %d feeder matches but got %d",
+                    feeder_idx, next_idx, 2 * len(next_round), len(feeder_round)
+                )
         except Exception as e:
-            logger.error("Feeder reordering failed for rounds %d->%d: %s", feeder_idx, next_idx, e)
+            logger.error("Reordering failed for rounds %d->%d: %s", feeder_idx, next_idx, e)
             # Keep original order on any unexpected error
-
-    # 1:1 reorder for R2 (idx 1) -> R32 (idx 2), the MLS entry round.
-    # This MUST run after R1->R2 reorder (pair 0,1 above) so R2 is in its
-    # final bracket-topology order before we align R32 to it.
-    # R32 has the same number of matches as R2, so the standard 2:1
-    # _reorder_feeder_round cannot be used.
-    r2 = rounds[1]["matches"]
-    r32 = rounds[2]["matches"]
-    if r2 and r32 and len(r2) == len(r32):
-        try:
-            rounds[2]["matches"] = _reorder_1to1_round(r2, r32)
-        except Exception as e:
-            logger.error("R2->R32 reordering failed: %s", e)
 
     return {"rounds": rounds}
