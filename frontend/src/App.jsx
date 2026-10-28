@@ -340,6 +340,7 @@ function useDragScroll(ref) {
 export default function App() {
   const [bracket, setBracket] = useState(null);
   const [error, setError] = useState(null);
+  const [articles, setArticles] = useState([]);
   const isMobile = window.innerWidth <= 768;
   const [headerExpanded, setHeaderExpanded] = useState(!isMobile);
   const bracketRef = useRef(null);
@@ -358,6 +359,14 @@ export default function App() {
       setError(e.message);
       return null;
     }
+  }, []);
+
+  // News list under the bracket; the section stays hidden if the list cannot load
+  useEffect(() => {
+    fetch("/api/articles")
+      .then(r => { if (!r.ok) throw new Error(`HTTP ${r.status}`); return r.json(); })
+      .then(setArticles)
+      .catch(e => console.error("Failed to load articles:", e));
   }, []);
 
   // Adaptive polling: 30s when live games detected or during ET evening window, 5min otherwise
@@ -658,7 +667,7 @@ export default function App() {
           </span>
         </div>
         <span style={{ fontSize: 12, color: "#777", fontFamily: "monospace" }}>
-          Data: ESPN &#183; ussoccer.com &#183; usopencup.welchproductsllc.com
+          Data: ESPN &#183; Wikipedia &#183; <a href="/news" style={{ color: "#777" }}>News</a> &#183; usopencup.welchproductsllc.com
         </span>
       </div>
 
@@ -699,40 +708,41 @@ export default function App() {
       {/* SEO CONTENT */}
       <article style={{ borderTop: "1px solid #1a3a2a", padding: "24px 20px", background: "#f7f7f7", maxWidth: 900 }}>
         <h2 style={{ fontSize: 20, fontWeight: 700, color: "#15192B", marginBottom: 12 }}>
-          2026 Lamar Hunt U.S. Open Cup Bracket & Results
+          2026 Lamar Hunt U.S. Open Cup Bracket and Results
         </h2>
         <p style={{ fontSize: 15, color: "#555", lineHeight: 1.7, marginBottom: 12 }}>
-          The 111th edition of the Lamar Hunt U.S. Open Cup is the oldest ongoing soccer competition in the United States,
-          open to all levels of men's soccer from Major League Soccer clubs to amateur and semi-professional teams.
-          The 2026 tournament features 80 teams competing in a single-elimination format across seven rounds,
-          from the First Round in March through the Final on October 21, with a $1 million prize purse.
+          St. Louis CITY SC won the 2026 Lamar Hunt U.S. Open Cup, the 111th edition of the oldest ongoing soccer
+          competition in the United States. They beat Columbus Crew 5-3 on penalties after a 0-0 draw in the Final
+          on October 21 at ScottsMiracle-Gro Field. It's the club's first trophy.
         </p>
         <h3 style={{ fontSize: 16, fontWeight: 700, color: "#212844", marginBottom: 8 }}>Tournament Format</h3>
         <p style={{ fontSize: 15, color: "#555", lineHeight: 1.7, marginBottom: 12 }}>
-          The First Round (March 17-19) features 48 professional teams from USL Championship, USL League One,
-          and MLS NEXT Pro alongside 32 amateur qualifiers from leagues including USL League Two, UPSL, NPSL, and regional associations.
-          The 32 First Round winners advance to the Second Round (March 31 - April 1),
-          and the 16 Second Round winners are joined by 16 MLS teams entering in the Round of 32 (April 14-15).
-          The tournament continues through the Round of 16, Quarterfinals, Semifinals, and the Final.
+          80 teams entered seven rounds of single elimination. The First Round (March 17-19) matched 32 professional
+          teams from the USL Championship, USL League One and MLS NEXT Pro against 32 amateur qualifiers.
+          The 32 First Round winners played a Second Round (March 31 and April 1), and the 16 Second Round winners
+          met 16 MLS clubs in the Round of 32 (April 14-15). The Round of 16, Quarterfinals, Semifinals and Final followed.
         </p>
-        <h3 style={{ fontSize: 16, fontWeight: 700, color: "#212844", marginBottom: 8 }}>First Round Highlights</h3>
+        <h3 style={{ fontSize: 16, fontWeight: 700, color: "#212844", marginBottom: 8 }}>Cupsets</h3>
         <p style={{ fontSize: 15, color: "#555", lineHeight: 1.7, marginBottom: 12 }}>
-          The 2026 First Round delivered dramatic results and memorable cupsets across 32 matches.
-          Lexington SC recorded the largest margin of victory with a 9-0 demolition of Flower City Union.
-          Union Omaha dominated BOHFS St. Louis 8-0, while San Antonio FC cruised past ASC New Stars 6-0.
-          Amateur sides Valley 559 FC, Virginia Dream FC, Flint City Bucks, and Tennessee Tempo FC all pulled off cupsets
-          against higher-division opponents, continuing the tradition of giant-killing that makes the Open Cup
-          one of the most exciting tournaments in American soccer.
+          Lower-division teams won 12 matches against higher-division opponents. Six came in the First Round,
+          and three came in the Round of 32, where Colorado Springs Switchbacks FC, Louisville City FC and
+          One Knoxville SC knocked out Sporting Kansas City, Austin FC and D.C. United.
         </p>
-        <h3 style={{ fontSize: 16, fontWeight: 700, color: "#212844", marginBottom: 8 }}>About This Bracket Tracker</h3>
+        <h3 style={{ fontSize: 16, fontWeight: 700, color: "#212844", marginBottom: 8 }}>About This Bracket</h3>
         <p style={{ fontSize: 15, color: "#555", lineHeight: 1.7, marginBottom: 0 }}>
-          This interactive bracket displays live scores and results for every round of the 2026 U.S. Open Cup.
-          Teams are color-coded by league tier: MLS, USL Championship, USL League One, MLS NEXT Pro, USL League Two, and Amateur.
-          Matches marked as cupsets indicate a lower-tier team defeating a higher-tier opponent.
-          The bracket updates automatically with the latest results from{" "}
-          <a href="https://www.ussoccer.com/us-open-cup/schedule" target="_blank" rel="noopener noreferrer"
-            style={{ color: "#15192B" }}>ussoccer.com</a>.
+          Teams are color-coded by league: MLS, USL Championship, USL League One, MLS NEXT Pro, USL League Two
+          and amateur. A cupset badge marks a lower-level team beating a higher-level one.
+          Results come from ESPN, with Wikipedia as a backup.
         </p>
+        {articles.length > 0 && <>
+          <h3 style={{ fontSize: 16, fontWeight: 700, color: "#212844", margin: "20px 0 8px" }}>U.S. Open Cup News</h3>
+          <ul style={{ fontSize: 15, lineHeight: 1.8, margin: 0, paddingLeft: 20 }}>
+            {articles.map(a => (
+              <li key={a.path}><a href={a.path} style={{ color: "#1F4CD7" }}>{a.title}</a></li>
+            ))}
+          </ul>
+          <p style={{ fontSize: 15, margin: "8px 0 0" }}><a href="/news" style={{ color: "#1F4CD7" }}>All articles</a></p>
+        </>}
       </article>
 
       {/* HOW IT WORKS */}
@@ -758,7 +768,7 @@ export default function App() {
             <div style={{ fontSize: 12, fontWeight: 800, color: "#C2002F", fontFamily: "monospace", letterSpacing: "0.12em", marginBottom: 8 }}>LIVE DATA PIPELINE</div>
             <p style={{ fontSize: 15, color: "#555", lineHeight: 1.7, margin: 0 }}>
               Scores update automatically through a multi-source pipeline.{" "}
-              <strong style={{ color: "#15192B" }}>Primary:</strong> ESPN public scoreboard API, queried by date range per round.{" "}
+              <strong style={{ color: "#15192B" }}>Primary:</strong> ESPN public scoreboard API, queried once per season and grouped by round.{" "}
               <strong style={{ color: "#15192B" }}>Backup:</strong> Wikipedia API, parsing structured wikitext football box templates.{" "}
               <strong style={{ color: "#15192B" }}>Supplemental:</strong> Best-effort scraping of ussoccer.com (page structure changes frequently).
               Existing data is never overwritten with fewer matches. APScheduler runs a full scrape every 2 hours.

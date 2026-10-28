@@ -1,12 +1,13 @@
 ---
-status: DRAFT, not published. Needs Todd's review.
 title: Every Cupset of the 2026 U.S. Open Cup
 meta_description: All 12 cupsets of the 2026 U.S. Open Cup, from six First Round wins by amateur sides to One Knoxville knocking out D.C. United. Scores and rounds.
 target_phrase: 2026 U.S. Open Cup upsets
-secondary_phrases: U.S. Open Cup cupsets 2026; One Knoxville D.C. United; Colorado Springs Switchbacks Sporting Kansas City
-suggested_url: /2026/cupsets
-links_to: /2026 (full bracket), /2026/final
-facts_checked: 2026-10-28 against the ESPN scoreboard API; league levels per the Wikipedia 2026 teams table
+season: 2026
+slug: cupsets
+published: 2026-10-28
+status: published
+source: ESPN, 2026 U.S. Open Cup scoreboard | https://www.espn.com/soccer/scoreboard/_/league/usa.open
+source: Wikipedia, 2026 U.S. Open Cup (teams and results) | https://en.wikipedia.org/wiki/2026_U.S._Open_Cup
 ---
 
 # Every Cupset of the 2026 U.S. Open Cup
@@ -28,7 +29,7 @@ The bracket ranks levels in this order: MLS, USL Championship, USL League One, M
 
 All six winners were amateur clubs, and three of them came from the UPSL.
 
-FC America CFL Spurs (UPSL) also went through against South Georgia Tormenta FC of USL League One, but by walkover: Tormenta withdrew from the tournament in February. A walkover is not counted as a cupset here.
+FC America CFL Spurs (UPSL) also went through against South Georgia Tormenta FC of USL League One, but by walkover. Tormenta withdrew from the tournament in February, so that one isn't counted as a cupset here.
 
 ## Second Round (March 31 and April 1)
 
@@ -56,4 +57,4 @@ Three non-MLS clubs reached the Round of 16, and all three went out there:
 - Colorado Springs Switchbacks FC drew 2-2 at Colorado Rapids and lost on penalties.
 - One Knoxville SC lost 4-1 at Columbus Crew.
 
-All eight quarterfinalists were MLS clubs, and St. Louis CITY SC went on to win the title. The full bracket, with every cupset marked, is at [usopencup.welchproductsllc.com/2026](/2026).
+All eight quarterfinalists were MLS clubs. St. Louis CITY SC went on to [win the title on penalties](/2026/final). The [full 2026 bracket](/) marks every cupset.
