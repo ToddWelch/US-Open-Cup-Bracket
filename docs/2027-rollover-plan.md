@@ -77,6 +77,7 @@ Yes. People search for past editions long after they end ("2026 U.S. Open Cup br
 - Regenerate `frontend/public/og-image.png` for 2027, and update the title, meta description, JSON-LD and noscript summary in `frontend/index.html`.
 - Update `docs/grok-content-brief.md`: the calendar table and the existing posts table.
 - The bracket page at phone width overflows by about 1250px (the SVG is wider than the screen). Pre-existing; fix it with the 2027 layout.
+- The article route `/<four-digit year>/<slug>` takes priority over static files, so a file at `dist/2026/bracket.json` would return 404. Serve the frozen 2026 archive data from an API route (for example `/api/bracket?season=2026`), not a static path under `/2026/`. The `/2026` page itself (no second segment) is not affected.
 
 ## Sources
 

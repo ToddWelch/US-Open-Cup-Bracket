@@ -6,6 +6,7 @@ before it can fail a deploy.
 """
 
 import os
+import re
 import sys
 
 import pytest
@@ -20,7 +21,7 @@ from backend.articles import ArticleError, build_article, load_articles, render_
 EN_DASH = chr(0x2013)
 
 
-def make_post(**overrides):
+def make_post(body="Body text.", source="Example | https://example.com/a", **overrides):
     fields = {
         "title": "Test Post",
         "meta_description": "A short description.",
@@ -32,8 +33,9 @@ def make_post(**overrides):
     }
     fields.update(overrides)
     lines = [f"{k}: {v}" for k, v in fields.items() if v is not None]
-    lines.append("source: Example | https://example.com/a")
-    return "---\n" + "\n".join(lines) + "\n---\n\n# Test Post\n\nBody text.\n"
+    if source is not None:
+        lines.append(f"source: {source}")
+    return "---\n" + "\n".join(lines) + f"\n---\n\n# {fields['title']}\n\n{body}\n"
 
 
 class TestRealPosts:
@@ -44,14 +46,16 @@ class TestRealPosts:
             "/2026/final", "/2026/cupsets", "/2027/format-and-schedule", "/2027/draw",
         }
 
-    def test_internal_links_point_at_real_pages(self):
-        """Every site-relative link in a post must be the bracket, /news, or a published post."""
-        import re
-        posts = load_articles()
-        valid = {"/", "/news"} | {a.path for a in posts if a.is_published}
-        for a in posts:
-            for href in re.findall(r'href="(/[^"#]*)', a.body_html):
-                assert href in valid, f"{a.filename} links to {href}"
+    def test_broken_site_link_fails_the_load(self, tmp_path):
+        (tmp_path / "a.md").write_text(make_post(body="See [the draw](/2027/drw)."))
+        with pytest.raises(ArticleError, match="links to /2027/drw"):
+            load_articles(str(tmp_path))
+
+    def test_published_post_cannot_link_to_a_draft(self, tmp_path):
+        (tmp_path / "a.md").write_text(make_post(body="See [next](/2026/next-one)."))
+        (tmp_path / "b.md").write_text(make_post(slug="next-one", status="draft"))
+        with pytest.raises(ArticleError, match="links to /2026/next-one"):
+            load_articles(str(tmp_path))
 
 
 class TestWriterBrief:
@@ -60,7 +64,6 @@ class TestWriterBrief:
     def test_brief_example_post_passes_validation(self):
         """The example in the writer brief must stay a valid draft, so the
         agent following it produces files the site accepts."""
-        import re
         text = open(self.BRIEF, encoding="utf-8").read()
         example = re.search(r"```markdown\n(.*?)```", text, re.S).group(1)
         a = build_article(example, "brief-example.md")
@@ -86,17 +89,42 @@ class TestValidation:
         assert a.sources == [{"label": "Example", "url": "https://example.com/a"}]
 
     @pytest.mark.parametrize("overrides, message", [
-        ({"title": None}, "missing front matter: title"),
         ({"status": "live"}, "status must be one of"),
         ({"slug": "Bad Slug"}, "slug must be"),
         ({"season": "26"}, "season must be"),
-        ({"published": "October 28"}, "dates must be"),
+        ({"published": "October 28"}, "published must be YYYY-MM-DD"),
+        ({"published": "20261028"}, "published must be YYYY-MM-DD"),
+        ({"published": "2026-02-30"}, "not a real date"),
+        ({"updated": "2026-10-01"}, "is before published"),
         ({"title": "x" * 61}, "title tag is 61 characters"),
         ({"meta_description": "x" * 161}, "meta_description is 161"),
+        ({"udpated": "2026-10-29"}, "unknown front matter key 'udpated'"),
+        ({"source": " | https://example.com/a"}, "source must be"),
+        ({"source": "Example \\| https://example.com/a", "body": "x"}, None),
+        ({"body": "Read [this](www.espn.com/x)."}, "not allowed in posts: www.espn.com/x"),
+        ({"body": "![logo](https://example.com/a.png)"}, "not allowed in posts: image https://example.com/a.png"),
     ])
-    def test_bad_front_matter_raises(self, overrides, message):
-        with pytest.raises(ArticleError, match=message):
+    def test_bad_post_raises(self, overrides, message):
+        if message is None:
+            # A copied markdown-table escape lands in the label, which is allowed text
+            build_article(make_post(**overrides), "ok.md")
+            return
+        with pytest.raises(ArticleError, match=re.escape(message)):
             build_article(make_post(**overrides), "bad.md")
+
+    def test_missing_field_raises(self):
+        text = make_post().replace("target_phrase: test phrase\n", "")
+        with pytest.raises(ArticleError, match="missing front matter: target_phrase"):
+            build_article(text, "bad.md")
+
+    def test_body_must_start_with_the_title(self):
+        text = make_post().replace("# Test Post", "## Test Post")
+        with pytest.raises(ArticleError, match="body must start with '# Test Post'"):
+            build_article(text, "bad.md")
+
+    def test_dashes_inside_a_source_url_do_not_end_the_front_matter(self):
+        a = build_article(make_post(source="Example | https://example.com/a---b"), "ok.md")
+        assert a.sources[0]["url"] == "https://example.com/a---b"
 
     def test_long_title_is_fine_with_short_title_tag(self):
         a = build_article(make_post(title="x" * 80, title_tag="Short tag"), "ok.md")
@@ -107,9 +135,8 @@ class TestValidation:
             build_article(make_post(title=f"Score 2{EN_DASH}1"), "dash.md")
 
     def test_source_is_required(self):
-        text = make_post().replace("source: Example | https://example.com/a\n", "")
         with pytest.raises(ArticleError, match="at least one 'source"):
-            build_article(text, "nosource.md")
+            build_article(make_post(source=None), "nosource.md")
 
     def test_duplicate_url_is_rejected(self, tmp_path):
         (tmp_path / "a.md").write_text(make_post())
@@ -120,19 +147,25 @@ class TestValidation:
 
 class TestRenderingIsSafe:
     def test_raw_html_is_escaped(self):
-        html = render_markdown("Hello <script>alert(1)</script>\n\n<div onclick=x>hi</div>")
+        html, rejected = render_markdown("Hello <script>alert(1)</script>\n\n<div onclick=x>hi</div>")
         assert "<script>" not in html
         assert "<div" not in html
         assert "&lt;script&gt;" in html
+        assert rejected == []
 
-    def test_javascript_links_lose_their_href(self):
-        html = render_markdown("[click](javascript:alert(1)) and [ok](/news) and [ext](https://ussoccer.com)")
+    def test_javascript_links_lose_their_href_and_are_reported(self):
+        html, rejected = render_markdown("[click](javascript:alert(1)) and [ok](/news) and [ext](https://ussoccer.com)")
         assert "javascript:" not in html
         assert 'href="/news"' in html
         assert 'href="https://ussoccer.com"' in html
+        assert rejected == ["javascript:alert(1)"]
+
+    def test_javascript_link_in_a_post_is_refused(self):
+        with pytest.raises(ArticleError, match="not allowed in posts: javascript:alert"):
+            build_article(make_post(body="[x](javascript:alert(1))"), "bad.md")
 
     def test_tables_render(self):
-        assert "<table>" in render_markdown("| a | b |\n|---|---|\n| 1 | 2 |")
+        assert "<table>" in render_markdown("| a | b |\n|---|---|\n| 1 | 2 |")[0]
 
 
 @pytest.fixture
@@ -160,6 +193,9 @@ class TestRoutes:
 
     def test_unknown_article_is_404(self, client):
         assert client.get("/2026/not-a-post").status_code == 404
+
+    def test_padded_year_is_404(self, client):
+        assert client.get("/02026/final").status_code == 404
 
     def test_static_assets_still_served(self, client):
         assert client.get("/assets/app.js").status_code == 200

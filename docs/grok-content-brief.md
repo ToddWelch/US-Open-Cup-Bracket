@@ -30,7 +30,7 @@ Use primary sources for every fact. Ranked by authority:
 4. **ESPN** for results and match details: https://www.espn.com/soccer/scoreboard/_/league/usa.open
 5. **TheCup.us** (https://thecup.us), an independent site that follows the Open Cup closely, including the amateur qualifying rounds. Good for leads; confirm facts on a source above.
 6. **X**: the official U.S. Open Cup account and club and league accounts are good for breaking news. Never publish from a post on X alone; confirm on a source in 1 to 4 first.
-7. **Wikipedia** only as a pointer to other sources, never as the source of a fact. Its 2026 tournament article marks match winners wrong (it bolds the losing team).
+7. **Wikipedia** mainly as a pointer to other sources. You may list it in a `source:` line next to a primary source from 1 to 5, never alone. Its 2026 tournament article marks match winners wrong (it bolds the losing team).
 
 ## What is coming up (2026-27 calendar)
 
@@ -104,17 +104,26 @@ Required front matter fields:
 | `target_phrase` | The one search phrase the post targets. |
 | `season` | Four-digit year, for example `2027`. |
 | `slug` | Lowercase letters, numbers and single hyphens. |
-| `published` | `YYYY-MM-DD`, the date you hand it in. Todd may change it. |
-| `updated` | Optional. `YYYY-MM-DD` when you revise an existing post. |
+| `published` | `YYYY-MM-DD`, the date you hand it in. A published post goes live on its next deploy whatever this date says, so Todd sets it when he publishes. |
+| `updated` | Optional. `YYYY-MM-DD` when you revise an existing post; not earlier than `published`. |
 | `status` | Always `draft` from you. |
-| `source` | At least one. Repeat the line for more. Format: `Label \| https://...` |
+| `source` | At least one. Repeat the line for more. Format below. |
+
+No other front matter keys are allowed; the site rejects unknown ones.
+
+Each source line has a label, a space, a vertical bar, a space and an `https://` link:
+
+```text
+source: U.S. Soccer, 2027 First Round pairings | https://www.ussoccer.com/stories
+```
 
 Body rules:
 
-- Start with `# ` and the title.
+- The first line of the body is `# ` followed by the exact `title`.
 - Use `##` for sections. Markdown lists, tables, **bold** and links are fine.
 - No HTML: the site shows it as plain text.
-- Links must start with `https://`, `/` (site pages) or `#`.
+- No images.
+- Links must start with `https://`, `/` (site pages) or `#`. A site link must be `/`, `/news` or the path of a published post; the site refuses to start if a link points at a page that doesn't exist.
 
 Example (a complete, valid file):
 

@@ -717,7 +717,7 @@ export default function App() {
         </p>
         <h3 style={{ fontSize: 16, fontWeight: 700, color: "#212844", marginBottom: 8 }}>Tournament Format</h3>
         <p style={{ fontSize: 15, color: "#555", lineHeight: 1.7, marginBottom: 12 }}>
-          80 teams played seven rounds of single elimination. The First Round (March 17-19) matched 32 professional
+          80 teams entered seven rounds of single elimination. The First Round (March 17-19) matched 32 professional
           teams from the USL Championship, USL League One and MLS NEXT Pro against 32 amateur qualifiers.
           The 32 First Round winners played a Second Round (March 31 and April 1), and the 16 Second Round winners
           met 16 MLS clubs in the Round of 32 (April 14-15). The Round of 16, Quarterfinals, Semifinals and Final followed.

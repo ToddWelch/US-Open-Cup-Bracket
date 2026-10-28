@@ -25,7 +25,7 @@ def news_index():
     return render_template("news.html", articles=published_articles(), site_url=SITE_URL)
 
 
-@bp.route("/<int:season>/<slug>")
+@bp.route("/<int(fixed_digits=4):season>/<slug>")
 def article_page(season, slug):
     for a in published_articles():
         if a.season == season and a.slug == slug:

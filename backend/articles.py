@@ -20,14 +20,19 @@ SITE_URL = "https://usopencup.welchproductsllc.com"
 POSTS_DIR = os.path.join(os.path.dirname(__file__), "content", "posts")
 
 REQUIRED_FIELDS = ("title", "meta_description", "target_phrase", "season", "slug", "published", "status")
+OPTIONAL_FIELDS = ("title_tag", "updated")
 STATUSES = ("draft", "published")
 SLUG_RE = re.compile(r"^[a-z0-9]+(?:-[a-z0-9]+)*$")
+DATE_RE = re.compile(r"^\d{4}-\d{2}-\d{2}$")
 TITLE_TAG_MAX = 60
 META_DESCRIPTION_MAX = 160
 # En and em dashes are banned from public copy; written as code points so
 # this source file holds no dash characters itself
 BANNED_CHARS = (chr(0x2013), chr(0x2014))
 SAFE_LINK = re.compile(r"^(https?://|/|#|mailto:)", re.IGNORECASE)
+SITE_LINK = re.compile(r'href="(/[^"#?]*)')
+# Pages outside the articles that posts may link to
+SITE_PAGES = {"/", "/news"}
 
 
 class ArticleError(ValueError):
@@ -63,14 +68,20 @@ class Article:
 
 
 class _SafeLinks(Treeprocessor):
-    """Drop href/src values that are not http(s), site-relative, anchors or mailto."""
+    """Drop images and any href that is not http(s), site-relative, an anchor
+    or mailto, recording each one in md.rejected so the caller can refuse it."""
 
     def run(self, root: Element):
+        for parent in list(root.iter()):
+            for el in list(parent):
+                if el.tag == "img":
+                    self.md.rejected.append(f"image {el.get('src', '')}")
+                    parent.remove(el)
         for el in root.iter():
-            for attr in ("href", "src"):
-                value = el.get(attr)
-                if value is not None and not SAFE_LINK.match(value.strip()):
-                    del el.attrib[attr]
+            value = el.get("href")
+            if value is not None and not SAFE_LINK.match(value.strip()):
+                self.md.rejected.append(value)
+                del el.attrib["href"]
 
 
 class _NoRawHtml(Extension):
@@ -83,16 +94,25 @@ class _NoRawHtml(Extension):
 
 
 def render_markdown(text):
-    return markdown.markdown(text, extensions=["tables", _NoRawHtml()])
+    """Render post Markdown. Returns (html, rejected): rejected lists the
+    images and link targets that were removed from the output."""
+    md = markdown.Markdown(extensions=["tables", _NoRawHtml()])
+    md.rejected = []
+    html = md.convert(text)
+    return html, md.rejected
 
 
 def parse_front_matter(text, filename):
     """Split a post into (fields, body). "source" may repeat; other keys may not."""
-    parts = text.split("---", 2)
-    if len(parts) != 3 or parts[0].strip():
-        raise ArticleError(f"{filename}: must start with a front matter block between --- lines")
+    lines = text.split("\n")
+    if not lines or lines[0].strip() != "---":
+        raise ArticleError(f"{filename}: must start with a --- line opening the front matter")
+    end = next((i for i in range(1, len(lines)) if lines[i].strip() == "---"), None)
+    if end is None:
+        raise ArticleError(f"{filename}: front matter has no closing --- line")
+
     fields, sources = {}, []
-    for line in parts[1].strip().splitlines():
+    for line in lines[1:end]:
         if not line.strip():
             continue
         if ":" not in line:
@@ -100,15 +120,27 @@ def parse_front_matter(text, filename):
         key, value = (s.strip() for s in line.split(":", 1))
         if key == "source":
             label, sep, link = value.rpartition("|")
-            if not sep or not link.strip().startswith("https://"):
+            label = label.strip()
+            if not sep or not label or not link.strip().startswith("https://"):
                 raise ArticleError(f"{filename}: source must be 'Label | https://...': {value!r}")
-            sources.append({"label": label.strip(), "url": link.strip()})
+            sources.append({"label": label, "url": link.strip()})
+        elif key not in REQUIRED_FIELDS + OPTIONAL_FIELDS:
+            raise ArticleError(f"{filename}: unknown front matter key {key!r}")
         elif key in fields:
             raise ArticleError(f"{filename}: duplicate front matter key {key!r}")
         else:
             fields[key] = value
     fields["sources"] = sources
-    return fields, parts[2]
+    return fields, "\n".join(lines[end + 1:])
+
+
+def _parse_date(value, name, filename):
+    if not DATE_RE.match(value):
+        raise ArticleError(f"{filename}: {name} must be YYYY-MM-DD, got {value!r}")
+    try:
+        return date.fromisoformat(value)
+    except ValueError as e:
+        raise ArticleError(f"{filename}: {name} is not a real date: {value!r}") from e
 
 
 def build_article(text, filename):
@@ -134,11 +166,18 @@ def build_article(text, filename):
         raise ArticleError(f"{filename}: meta_description is {len(fields['meta_description'])} characters; keep it to {META_DESCRIPTION_MAX}")
     if not fields["sources"]:
         raise ArticleError(f"{filename}: needs at least one 'source: Label | https://...' line")
-    try:
-        published = date.fromisoformat(fields["published"])
-        updated = date.fromisoformat(fields["updated"]) if fields.get("updated") else None
-    except ValueError as e:
-        raise ArticleError(f"{filename}: dates must be YYYY-MM-DD: {e}") from e
+    published = _parse_date(fields["published"], "published", filename)
+    updated = _parse_date(fields["updated"], "updated", filename) if fields.get("updated") else None
+    if updated and updated < published:
+        raise ArticleError(f"{filename}: updated ({updated}) is before published ({published})")
+
+    first_line = next((line for line in body.splitlines() if line.strip()), "")
+    if first_line.strip() != f"# {fields['title']}":
+        raise ArticleError(f"{filename}: body must start with '# {fields['title']}'")
+
+    body_html, rejected = render_markdown(body)
+    if rejected:
+        raise ArticleError(f"{filename}: not allowed in posts: {', '.join(rejected)}; links must start with https://, / or #, and posts have no images")
 
     return Article(
         title=fields["title"],
@@ -150,14 +189,27 @@ def build_article(text, filename):
         published=published,
         updated=updated,
         status=fields["status"],
-        body_html=render_markdown(body),
+        body_html=body_html,
         sources=fields["sources"],
         filename=filename,
     )
 
 
+def check_site_links(articles):
+    """Every site-relative link in a post must reach a real page. Published
+    posts may link only to published posts; drafts may also link to drafts."""
+    published = SITE_PAGES | {a.path for a in articles if a.is_published}
+    everything = published | {a.path for a in articles}
+    for a in articles:
+        allowed = published if a.is_published else everything
+        for href in SITE_LINK.findall(a.body_html):
+            if href not in allowed:
+                raise ArticleError(f"{a.filename}: links to {href}, which is not a published page")
+
+
 def load_articles(posts_dir=POSTS_DIR):
-    """Load every .md post, newest first. Raises ArticleError on any bad post or duplicate URL."""
+    """Load every .md post, newest first. Raises ArticleError on any bad post,
+    duplicate URL or broken site link."""
     articles = []
     for name in sorted(os.listdir(posts_dir)):
         if not name.endswith(".md"):
@@ -171,5 +223,6 @@ def load_articles(posts_dir=POSTS_DIR):
             raise ArticleError(f"{a.filename}: URL {a.path} already used by {seen[a.path]}")
         seen[a.path] = a.filename
 
+    check_site_links(articles)
     articles.sort(key=lambda a: (a.published, a.slug), reverse=True)
     return articles

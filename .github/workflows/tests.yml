@@ -1,0 +1,50 @@
+# Trigger: pull requests into main only. Railway deploys on every merge to
+# main, so this is the merge gate: the full backend suite (including article
+# validation, which would otherwise only fail at deploy time) and the scan
+# for em and en dashes in public copy. No push trigger, so a commit never
+# runs twice. Live-source tests are skipped here (LIVE_SOURCES is unset).
+name: tests
+
+on:
+  pull_request:
+    branches: [main]
+
+concurrency:
+  group: ${{ github.workflow }}-${{ github.ref }}
+  cancel-in-progress: ${{ github.event_name == 'pull_request' }}
+
+permissions:
+  contents: read
+
+jobs:
+  backend:
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: "3.11"
+      - name: Install dependencies
+        run: pip install -r requirements.txt pytest==8.3.4
+      - name: Backend tests
+        run: python -m pytest -q backend/tests
+      - name: No em or en dashes in public copy
+        run: |
+          python - <<'EOF'
+          import pathlib, sys
+          roots = ["frontend/index.html", "frontend/src", "backend/templates", "backend/content", "docs/grok-content-brief.md"]
+          bad = []
+          for root in roots:
+              p = pathlib.Path(root)
+              for f in ([p] if p.is_file() else sorted(p.rglob("*"))):
+                  if f.is_file():
+                      for n, line in enumerate(f.read_text(encoding="utf-8").splitlines(), 1):
+                          if chr(0x2013) in line or chr(0x2014) in line:
+                              bad.append(f"{f}:{n}")
+          if bad:
+              print("Em or en dash found (use a comma, colon or new sentence):")
+              print("\n".join(bad))
+              sys.exit(1)
+          print("No em or en dashes found.")
+          EOF
