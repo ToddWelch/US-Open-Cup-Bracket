@@ -67,6 +67,23 @@ class TestRoundOrdering:
         assert matches[-1]["note"] == "PEN"
 
 
+class TestSlackAlertLogging:
+    def test_failed_alert_does_not_log_the_webhook_url(self, monkeypatch, caplog):
+        """requests puts the URL in its exception text; the webhook URL is a secret."""
+        webhook = "https://hooks.slack.com/services/T000/B000/not-a-real-token"
+        monkeypatch.setattr(scraper, "SLACK_WEBHOOK_URL", webhook)
+
+        def failing_post(url, **kwargs):
+            raise scraper.requests.ConnectionError(f"Max retries exceeded with url: {url}")
+
+        monkeypatch.setattr(scraper.requests, "post", failing_post)
+        with caplog.at_level("ERROR"):
+            scraper.send_slack_alert("test")
+
+        assert "ConnectionError" in caplog.text
+        assert "hooks.slack.com" not in caplog.text
+
+
 class TestErrorPropagation:
     def test_http_error_is_recorded_and_existing_bracket_kept(self, monkeypatch, tmp_path):
         """An ESPN HTTP error shows as status "error" (type name only, since

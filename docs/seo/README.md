@@ -26,7 +26,7 @@ Posts 3 and 4 depend on U.S. Soccer dates that are "subject to change." Re-check
 | 1 | `<title>` said "Live Tournament Bracket & Scores" | `2026 U.S. Open Cup Bracket and Results` |
 | 2 | Meta description said "Live ... real-time scores" | Result-led description |
 | 3 | `og:`/`twitter:` titles said "Live Scores"; no `og:image` | New titles; 1200x630 `og-image.png` |
-| 4 | JSON-LD FAQ in the future tense, team counts off | Past tense with the result; counts per Wikipedia's teams table. Google shows FAQ rich results only for government and health sites since 2023, so this markup earns no rich result here |
+| 4 | JSON-LD FAQ in the future tense, team counts off | Rewritten in PR #3, then removed in PR #4: Google requires marked-up content to be visible on the page (this FAQ wasn't), and shows FAQ rich results only for government and health sites since 2023 |
 | 5 | Article block stopped at "First Round Highlights" | Champion summary, format, cupsets, and a news list from `/api/articles` |
 | 6 | Copy and footer credited ussoccer.com | "Results come from ESPN, with Wikipedia as a backup" |
 | 7 | `robots.txt` returned 404 | Served by Flask, points to the sitemap |

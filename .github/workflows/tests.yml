@@ -32,15 +32,18 @@ jobs:
       - name: No em or en dashes in public copy
         run: |
           python - <<'EOF'
-          import pathlib, sys
+          import html, pathlib, sys
           roots = ["frontend/index.html", "frontend/src", "backend/templates", "backend/content", "docs/grok-content-brief.md"]
+          # en and em dash plus look-alikes (figure dash, horizontal bar, minus sign);
+          # lines are unescaped first so entities such as &mdash; count too
+          banned = [chr(c) for c in (0x2012, 0x2013, 0x2014, 0x2015, 0x2212)]
           bad = []
           for root in roots:
               p = pathlib.Path(root)
               for f in ([p] if p.is_file() else sorted(p.rglob("*"))):
                   if f.is_file():
                       for n, line in enumerate(f.read_text(encoding="utf-8").splitlines(), 1):
-                          if chr(0x2013) in line or chr(0x2014) in line:
+                          if any(ch in html.unescape(line) for ch in banned):
                               bad.append(f"{f}:{n}")
           if bad:
               print("Em or en dash found (use a comma, colon or new sentence):")

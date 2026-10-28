@@ -4,6 +4,29 @@ Newest first. Entries are never deleted.
 
 ---
 
+## 2026-10-28 (evening): Articles live, main protected, content hardening
+
+**Scope:** Todd's approvals: deploy PR #3, protect `main`, open a hardening PR. Build class EXTERNAL.
+**Branch:** `fix/content-hardening` (PR #4). Not merged: its deploy needs Todd's approval.
+
+### Done
+- PR #3: Crash Override approved with notes on `ea52eaa`; notes fixed in `2e1d595` (rejected links and images raise, broken site links fail the load, stricter front matter and dates, four-digit year route, CI workflow); re-review approved `2e1d595`. Cross-model gate (fresh-eyes Sonnet) cleared with three MINOR findings (findings: `scratch/fresh-eyes-review-articles-and-seo-2026-10-28.md`; catch logged in `~/.claude/logs/gate-catches.md`). CI green on Python 3.11. Merged `4235420` with Todd's approval; Railway deployed it at 23:43 UTC.
+- Live check: `/news`, all four articles, `/robots.txt`, `/sitemap.xml`, `/api/articles`, favicon and share image return 200; unknown slug 404; headless smoke on production clean (no console errors, no broken images, article pages fit at 400px, click-through works). The real-Chrome extension timed out on the article pages, so that check is headless only.
+- Slack alerts: zero since the fix deployed (scrapes at 18:00, 20:00 and 22:00 UTC all used ESPN's 79 matches).
+- Branch protection on `main` (Todd approved): PR required, `backend` check required and up to date, admins included, no force pushes or deletions, 0 required approvals (independent review stays with Crash Override).
+- PR #4: dash look-alikes and dash entities (`&mdash;`, `&#8212;`, U+2012, U+2015, U+2212) rejected in posts and caught by the CI scan; FAQPage JSON-LD removed (not visible on the page); the Slack failure log prints only the exception type (the old handler logged the webhook URL, shown by a test against main); absolute links to this site get the broken-link check. 85 tests pass; the new ones fail on main.
+
+### Next
+1. Crash Override review of PR #4, CI, then Todd's deploy approval.
+2. Todd: submit `https://usopencup.welchproductsllc.com/sitemap.xml` in Google Search Console.
+3. Hand `docs/grok-content-brief.md` to the Grok agent; its drafts come back as PRs or files for Todd's review.
+4. Early January 2027: rollover build (`docs/2027-rollover-plan.md`).
+
+### Housekeeping
+- `frontend/public/` is now tracked (favicon, share image). The untracked `frontend/public/index.html` in the main checkout is harmless: tested, Vite's built `index.html` takes precedence over it. It's a stale copy and can be deleted locally.
+
+---
+
 ## 2026-10-28 (later): Fix deployed; articles, on-page SEO and writer brief
 
 **Scope:** Todd's answers on the review page. Build class EXTERNAL.

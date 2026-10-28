@@ -104,7 +104,9 @@ def send_slack_alert(message):
         requests.post(SLACK_WEBHOOK_URL, json={"text": message}, timeout=10)
         logger.info("Slack alert sent")
     except Exception as e:
-        logger.error("Slack alert failed: %s", e)
+        # Type only: requests exception text includes the request URL, and
+        # the webhook URL is the secret
+        logger.error("Slack alert failed: %s", type(e).__name__)
 
 
 def has_games_today(bracket_data):
