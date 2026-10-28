@@ -34,9 +34,10 @@ jobs:
           python - <<'EOF'
           import html, pathlib, sys
           roots = ["frontend/index.html", "frontend/src", "backend/templates", "backend/content", "docs/grok-content-brief.md"]
-          # en and em dash plus look-alikes (figure dash, horizontal bar, minus sign);
-          # lines are unescaped first so entities such as &mdash; count too
-          banned = [chr(c) for c in (0x2012, 0x2013, 0x2014, 0x2015, 0x2212)]
+          # en and em dash plus look-alikes (figure dash, horizontal bar, minus sign,
+          # two-em and three-em dash, small em dash); lines are unescaped first so
+          # HTML entities for any of them count too. Same set as backend/articles.py.
+          banned = [chr(c) for c in (0x2012, 0x2013, 0x2014, 0x2015, 0x2212, 0x2E3A, 0x2E3B, 0xFE58)]
           bad = []
           for root in roots:
               p = pathlib.Path(root)

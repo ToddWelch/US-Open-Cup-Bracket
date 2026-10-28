@@ -28,12 +28,15 @@ DATE_RE = re.compile(r"^\d{4}-\d{2}-\d{2}$")
 TITLE_TAG_MAX = 60
 META_DESCRIPTION_MAX = 160
 # En and em dashes are banned from public copy, along with the characters
-# that render the same: figure dash, horizontal bar and minus sign. Written
-# as code points so this source file holds no dash characters itself.
-BANNED_CHARS = (chr(0x2012), chr(0x2013), chr(0x2014), chr(0x2015), chr(0x2212))
+# that render the same: figure dash, horizontal bar, minus sign, two-em and
+# three-em dash, and small em dash. Written as code points so this source
+# file holds no dash characters itself.
+BANNED_CHARS = tuple(chr(c) for c in (0x2012, 0x2013, 0x2014, 0x2015, 0x2212, 0x2E3A, 0x2E3B, 0xFE58))
 SAFE_LINK = re.compile(r"^(https?://|/|#|mailto:)", re.IGNORECASE)
-# Site links: relative ("/2026/final") or absolute to this site
-SITE_LINK = re.compile(r'href="(?:' + re.escape(SITE_URL) + r')?(/[^"#?]*)')
+SITE_HOST = "usopencup.welchproductsllc.com"
+# Site links: relative ("/2026/final") or absolute to this site, any scheme,
+# case, www prefix or port
+SITE_LINK = re.compile(r'href="(?:https?://(?:www\.)?' + re.escape(SITE_HOST) + r'(?::\d+)?)?(/[^"#?]*)', re.IGNORECASE)
 # Pages outside the articles that posts may link to
 SITE_PAGES = {"/", "/news"}
 
@@ -101,8 +104,8 @@ def render_markdown(text):
     images and link targets that were removed from the output."""
     md = markdown.Markdown(extensions=["tables", _NoRawHtml()])
     md.rejected = []
-    html = md.convert(text)
-    return html, md.rejected
+    rendered = md.convert(text)
+    return rendered, md.rejected
 
 
 def parse_front_matter(text, filename):

@@ -811,7 +811,7 @@ export default function App() {
               Deployed on <strong style={{ color: "#15192B" }}>Railway</strong> with automatic deploys from{" "}
               <code style={{ color: "#15192B", fontSize: 14 }}>main</code>.
               Health checks hit <code style={{ color: "#15192B", fontSize: 14 }}>/api/health</code>.
-              SEO includes Open Graph, Twitter Cards, JSON-LD structured data, FAQ schema, and semantic HTML content.
+              SEO includes Open Graph, Twitter Cards, JSON-LD structured data and semantic HTML content.
             </p>
           </div>
 

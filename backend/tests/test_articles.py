@@ -57,6 +57,17 @@ class TestRealPosts:
         with pytest.raises(ArticleError, match="links to /2027/drw"):
             load_articles(str(tmp_path))
 
+    @pytest.mark.parametrize("prefix", [
+        "http://usopencup.welchproductsllc.com",
+        "https://USOPENCUP.welchproductsllc.com",
+        "https://www.usopencup.welchproductsllc.com",
+        "https://usopencup.welchproductsllc.com:443",
+    ])
+    def test_broken_link_variants_to_this_site_fail_the_load(self, tmp_path, prefix):
+        (tmp_path / "a.md").write_text(make_post(body=f"See [the draw]({prefix}/2027/drw)."))
+        with pytest.raises(ArticleError, match="links to /2027/drw"):
+            load_articles(str(tmp_path))
+
     def test_valid_absolute_link_to_this_site_loads(self, tmp_path):
         (tmp_path / "a.md").write_text(make_post(body=f"See [the news]({articles.SITE_URL}/news)."))
         assert len(load_articles(str(tmp_path))) == 1
@@ -146,7 +157,10 @@ class TestValidation:
 
     @pytest.mark.parametrize("snippet", [
         "&mdash;", "&ndash;", "&#8212;", "&#x2013;", "&horbar;", "&minus;",
-        chr(0x2012), chr(0x2015), chr(0x2212),
+        chr(0x2012), chr(0x2015), chr(0x2212), chr(0x2E3A), chr(0x2E3B), chr(0xFE58),
+        # Markdown turns the escaped "&\#8212;" into "&#8212;" only when rendering,
+        # so only the check on the rendered body catches this one
+        "&\\#8212;",
     ])
     def test_dash_entities_and_look_alikes_are_rejected(self, snippet):
         """They render as a dash on the page, so they break the same rule."""

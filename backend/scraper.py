@@ -101,8 +101,12 @@ def send_slack_alert(message):
         logger.warning("SLACK_WEBHOOK_URL not set, skipping alert")
         return
     try:
-        requests.post(SLACK_WEBHOOK_URL, json={"text": message}, timeout=10)
-        logger.info("Slack alert sent")
+        resp = requests.post(SLACK_WEBHOOK_URL, json={"text": message}, timeout=10)
+        # Status code only; resp.url is the webhook
+        if resp.status_code >= 400:
+            logger.error("Slack alert rejected: HTTP %d", resp.status_code)
+        else:
+            logger.info("Slack alert sent")
     except Exception as e:
         # Type only: requests exception text includes the request URL, and
         # the webhook URL is the secret

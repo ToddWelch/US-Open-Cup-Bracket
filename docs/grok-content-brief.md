@@ -55,7 +55,7 @@ Evergreen topics for quiet weeks: past champions and finals, how amateur teams q
 
 The site publishes in Todd's voice. These rules are not optional.
 
-- **No em dashes or en dashes anywhere** (the characters U+2014 and U+2013). The site rejects any file that contains one. Use a comma, a colon or a new sentence. Scores and date ranges use a plain hyphen: `2-1`, `April 13-14`.
+- **No em dashes or en dashes anywhere** (the characters U+2014 and U+2013). That includes characters that look the same (U+2012, U+2015, U+2212, U+2E3A, U+2E3B, U+FE58) and HTML entities that produce any of them, named or numeric. The site rejects any file that contains one. Use a comma, a colon or a new sentence. Scores and date ranges use a plain hyphen: `2-1`, `April 13-14`.
 - **Short, plain sentences.** Subject, verb, object. One idea per sentence. Paragraphs of one to three sentences.
 - **Plain words.** "Beat," not "dispatched." "Won 3-0," not "cruised to a dominant victory."
 - **No hype.** Never use: dramatic, stunning, thrilling, epic, incredible, massive, historic (unless it is literally a first, with the source), giant-killing, demolition, Cinderella, heartbreak, game-changer.
@@ -170,7 +170,7 @@ The live list is always at https://usopencup.welchproductsllc.com/news.
 ## Before you hand back a post
 
 1. `status: draft`.
-2. No em or en dash anywhere. Search the file for both characters.
+2. No em or en dash anywhere, no look-alike dash and no HTML entity for one. The only dash-like character in the file is the plain hyphen.
 3. `title_tag` (or `title`) is 60 characters or fewer; `meta_description` is 160 or fewer.
 4. Every fact traces to a `source:` line.
 5. No hype words, no filler transitions, no Oxford comma, no exclamation points, no first person.

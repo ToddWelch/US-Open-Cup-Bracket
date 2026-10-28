@@ -83,6 +83,23 @@ class TestSlackAlertLogging:
         assert "ConnectionError" in caplog.text
         assert "hooks.slack.com" not in caplog.text
 
+    def test_rejected_alert_is_logged_as_an_error_without_the_url(self, monkeypatch, caplog):
+        """A revoked or rotated webhook answers 4xx; that must not read as sent."""
+        webhook = "https://hooks.slack.com/services/T000/B000/not-a-real-token"
+        monkeypatch.setattr(scraper, "SLACK_WEBHOOK_URL", webhook)
+
+        class Rejected:
+            status_code = 404
+            url = webhook
+
+        monkeypatch.setattr(scraper.requests, "post", lambda url, **kwargs: Rejected())
+        with caplog.at_level("INFO"):
+            scraper.send_slack_alert("test")
+
+        assert "Slack alert rejected: HTTP 404" in caplog.text
+        assert "Slack alert sent" not in caplog.text
+        assert "hooks.slack.com" not in caplog.text
+
 
 class TestErrorPropagation:
     def test_http_error_is_recorded_and_existing_bracket_kept(self, monkeypatch, tmp_path):

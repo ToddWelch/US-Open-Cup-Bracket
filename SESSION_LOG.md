@@ -16,8 +16,11 @@ Newest first. Entries are never deleted.
 - Branch protection on `main` (Todd approved): PR required, `backend` check required and up to date, admins included, no force pushes or deletions, 0 required approvals (independent review stays with Crash Override).
 - PR #4: dash look-alikes and dash entities (`&mdash;`, `&#8212;`, U+2012, U+2015, U+2212) rejected in posts and caught by the CI scan; FAQPage JSON-LD removed (not visible on the page); the Slack failure log prints only the exception type (the old handler logged the webhook URL, shown by a test against main); absolute links to this site get the broken-link check. 85 tests pass; the new ones fail on main.
 
+- PR #4 review: Crash Override approved `6ff7955` with notes; fixed in the follow-up commit: "FAQ schema" removed from the "How This Website Works" copy, a test for the rendered-body dash check (the only guard against an escaped `&\#8212;`), a local variable no longer hides the `html` module, absolute self-links match any scheme, case, `www.` or port, three more look-alike dashes (U+2E3A, U+2E3B, U+FE58) banned in posts and CI, the brief names the look-alikes and entity forms, and a 4xx from Slack logs "rejected" with the status code instead of "sent". 94 tests pass.
+- Webhook exposure check: Railway keeps about the last 5,000 log lines per deployment. In what's retained (all 20 deployments; only the last three days hold lines) there are 0 "Slack alert failed" lines and 0 webhook URLs. Logs from March to mid-October are gone, so a past leak can't be ruled out; rotating the webhook is Todd's call (env var change).
+
 ### Next
-1. Crash Override review of PR #4, CI, then Todd's deploy approval.
+1. Crash Override re-review of PR #4, CI, then Todd's deploy approval.
 2. Todd: submit `https://usopencup.welchproductsllc.com/sitemap.xml` in Google Search Console.
 3. Hand `docs/grok-content-brief.md` to the Grok agent; its drafts come back as PRs or files for Todd's review.
 4. Early January 2027: rollover build (`docs/2027-rollover-plan.md`).
