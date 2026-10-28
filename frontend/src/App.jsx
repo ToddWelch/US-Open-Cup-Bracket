@@ -443,7 +443,10 @@ export default function App() {
 
   // Find the current active round: latest populated round with incomplete matches.
   // Skip rounds with 0 matches (future rounds not yet populated).
-  let currentRoundIdx = 0;
+  // With no active round, fall back to the latest fully complete round, so a
+  // finished tournament shows FINAL DONE rather than R1 DONE.
+  let currentRoundIdx = null;
+  let latestCompleteIdx = null;
   for (let i = allRounds.length - 1; i >= 0; i--) {
     const rm = allRounds[i]?.matches || [];
     if (rm.length === 0) continue;
@@ -452,9 +455,9 @@ export default function App() {
       currentRoundIdx = i;
       break;
     }
-    // All matches done in this round; keep as fallback if nothing active found
-    currentRoundIdx = i;
+    if (latestCompleteIdx === null) latestCompleteIdx = i;
   }
+  if (currentRoundIdx === null) currentRoundIdx = latestCompleteIdx ?? 0;
 
   const currentRoundMatches = allRounds[currentRoundIdx]?.matches || [];
   const totalComplete = currentRoundMatches.filter(m => getWinner(m)).length;
