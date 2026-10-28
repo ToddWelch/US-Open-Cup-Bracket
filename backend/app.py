@@ -6,15 +6,18 @@ from flask import Flask, jsonify, request, send_from_directory
 try:
     from .scraper import scrape_bracket, send_slack_alert
     from .scheduler import init_scheduler
+    from .article_routes import bp as articles_bp
 except ImportError:
     from scraper import scrape_bracket, send_slack_alert
     from scheduler import init_scheduler
+    from article_routes import bp as articles_bp
 
 logger = logging.getLogger(__name__)
 
 ADMIN_KEY = os.environ.get("ADMIN_KEY")
 
 app = Flask(__name__, static_folder="../frontend/dist", static_url_path="")
+app.register_blueprint(articles_bp)
 
 DATA_DIR = os.path.join(os.path.dirname(__file__), "data")
 BRACKET_FILE = os.path.join(DATA_DIR, "bracket.json")

@@ -1,0 +1,55 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>{% block title %}{% endblock %}</title>
+  <meta name="description" content="{% block description %}{% endblock %}">
+  <link rel="canonical" href="{% block canonical %}{% endblock %}">
+  <link rel="icon" href="/favicon.svg" type="image/svg+xml">
+  <meta name="robots" content="index, follow">
+  <meta name="theme-color" content="#15192B">
+  <meta property="og:site_name" content="US Open Cup Bracket Tracker">
+  <meta property="og:image" content="{{ site_url }}/og-image.png">
+  <meta name="twitter:card" content="summary_large_image">
+  <meta name="twitter:image" content="{{ site_url }}/og-image.png">
+  {% block head %}{% endblock %}
+  <style>
+    * { box-sizing: border-box; }
+    body { margin: 0; background: #f5f5f5; color: #333; font: 17px/1.7 'Segoe UI', system-ui, -apple-system, sans-serif; }
+    header { background: #15192B; padding: 14px 20px; }
+    header a { color: #fff; text-decoration: none; }
+    .brand { font-size: 19px; font-weight: 800; letter-spacing: -0.01em; }
+    .brand span { color: #C2002F; }
+    nav { margin-top: 4px; font: 13px/1.4 monospace; letter-spacing: 0.08em; }
+    nav a { color: #bfbfbf; margin-right: 16px; }
+    nav a:hover { color: #fff; }
+    main { max-width: 760px; margin: 0 auto; padding: 24px 20px 40px; }
+    h1 { font-size: 30px; line-height: 1.25; color: #15192B; margin: 0 0 8px; }
+    h2 { font-size: 22px; color: #15192B; margin: 32px 0 8px; }
+    h3 { font-size: 18px; color: #212844; }
+    a { color: #1F4CD7; }
+    .meta { font: 13px/1.4 monospace; color: #777; margin-bottom: 24px; }
+    table { border-collapse: collapse; width: 100%; font-size: 15px; margin: 12px 0; display: block; overflow-x: auto; }
+    th, td { border: 1px solid #ddd; padding: 6px 8px; text-align: left; vertical-align: top; }
+    th { background: #eef0f5; }
+    .table-wrap { overflow-x: auto; }
+    .sources, .related { border-top: 1px solid #ddd; margin-top: 32px; padding-top: 12px; font-size: 15px; }
+    .card { background: #fff; border: 1px solid #e0e0e0; border-radius: 6px; padding: 14px 16px; margin: 12px 0; }
+    .card h2 { margin: 0 0 4px; font-size: 20px; }
+    .card p { margin: 4px 0 0; color: #555; font-size: 15px; }
+    footer { border-top: 1px solid #e0e0e0; padding: 14px 20px; font: 12px/1.5 monospace; color: #777; text-align: center; }
+    @media (max-width: 600px) { body { font-size: 16px; } h1 { font-size: 25px; } }
+  </style>
+</head>
+<body>
+  <header>
+    <a class="brand" href="/"><span>U.S.</span> Open Cup Bracket</a>
+    <nav><a href="/">BRACKET</a><a href="/news">NEWS</a></nav>
+  </header>
+  <main>
+    {% block content %}{% endblock %}
+  </main>
+  <footer>usopencup.welchproductsllc.com &#183; Results from ESPN, with Wikipedia as a backup</footer>
+</body>
+</html>

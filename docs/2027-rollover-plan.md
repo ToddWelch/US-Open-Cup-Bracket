@@ -4,7 +4,7 @@ Written 2026-10-28. Recommendation only: nothing here is built until Todd approv
 
 ## Recommendation in one paragraph
 
-Keep the 2026 bracket up permanently at `/2026` as a frozen archive, and put the 2027 bracket on the root URL as soon as U.S. Soccer publishes the 2027 First Round pairings (expected late January or February 2027). Build the season-config and archive work in December 2026 so the January switch is a data load, not a rebuild. The 2027 tournament is a different shape (96 teams, a Round of 64, a December Final), so the rollover is real code work, not a find-and-replace of "2026".
+Keep the 2026 bracket up permanently at `/2026` as a frozen archive, and put the 2027 bracket on the root URL as soon as U.S. Soccer publishes the 2027 First Round pairings (expected late January or February 2027). Build the season-config and archive work in early January 2027 (Todd's call, 2026-10-28), so the pairings announcement is a data load, not a rebuild. The 2027 tournament is a different shape (96 teams, a Round of 64, a December Final), so the rollover is real code work, not a find-and-replace of "2026".
 
 ## What is known about 2027 (sources at the bottom)
 
@@ -30,8 +30,8 @@ All 2027 dates are U.S. Soccer's and "subject to change." The amateur field come
 | When | What | Site state |
 |---|---|---|
 | Now (late Oct 2026) | Ship the 2026 correctness fix (PR `fix/2026-final-results`), needs Todd's deploy approval | 2026 complete, correct, on root |
-| Nov 2026 | Optional: on-page SEO fixes and the 2026 recap articles (separate PR) | same |
-| Dec 2026 | Build season config, `/2026` archive, 2027 bracket shape, scheduler and alert changes | same; 2027 code behind config |
+| Oct 28, 2026 | On-page SEO fixes and the first four articles (PR #3) | same, plus `/news` |
+| Early Jan 2027 | Build season config, `/2026` archive, 2027 bracket shape, scheduler and alert changes, remove the ussoccer.com scraper | same; 2027 code behind config |
 | Late Jan to Feb 2027 | U.S. Soccer publishes First Round pairings | load 2027 data; root becomes 2027; 2026 moves to `/2026` |
 | Before April 13, 2027 | Confirm ESPN has 2027 events and record their round slugs | live check |
 | April 13-14, 20-21 | First Round | live scoring |
@@ -63,12 +63,20 @@ All 2027 dates are U.S. Soccer's and "subject to change." The amateur field come
 
 Yes. People search for past editions long after they end ("2026 U.S. Open Cup bracket", "2026 U.S. Open Cup results"). A permanent `/2026` URL keeps whatever ranking the root URL earned this year, and the 2027 page can link to it ("2026 results") so the two support each other. Cost is near zero once it is a static JSON file.
 
-## Open decisions for Todd
+## Decisions (Todd, 2026-10-28)
 
-1. Approve deploying the 2026 fix (merge to main triggers Railway auto-deploy).
-2. Archive URL: `/2026` on this subdomain (recommended) or something else.
-3. Build window for the rollover: December 2026 (recommended) or wait for the January pairings.
-4. ussoccer.com scraper: remove (recommended) or rewrite.
+1. 2026 fix: approved, merged (PR #2) and deployed 2026-10-28.
+2. Archive URL: `/2026` on this subdomain.
+3. Build window: **January 2027**, not December. Start early in January so the build is done before the pairings land (2026's came January 27).
+4. ussoccer.com scraper: remove, as part of the rollover.
+5. Articles: on this site, in Todd's writing standards. Built in PR #3 (`/news`, `/<season>/<slug>`, sitemap, robots.txt).
+
+## Rollover checklist additions from the articles work
+
+- When `/2026` goes live, change the bracket links in the 2026 posts from `/` to `/2026`, and the "full 2026 bracket" links in the 2027 posts.
+- Regenerate `frontend/public/og-image.png` for 2027, and update the title, meta description, JSON-LD and noscript summary in `frontend/index.html`.
+- Update `docs/grok-content-brief.md`: the calendar table and the existing posts table.
+- The bracket page at phone width overflows by about 1250px (the SVG is wider than the screen). Pre-existing; fix it with the 2027 layout.
 
 ## Sources
 

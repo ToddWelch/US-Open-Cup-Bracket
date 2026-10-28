@@ -4,6 +4,29 @@ Newest first. Entries are never deleted.
 
 ---
 
+## 2026-10-28 (later): Fix deployed; articles, on-page SEO and writer brief
+
+**Scope:** Todd's answers on the review page. Build class EXTERNAL.
+**Branch:** `feat/articles-and-seo` (PR #3). Not merged: the deploy needs Todd's explicit approval, and the cross-model gate fires (first content real people read).
+
+### Todd's decisions (2026-10-28)
+- Deploy the 2026 fix: yes. Archive at `/2026`: yes. Rollover build: **January 2027**. ussoccer.com scraper: remove (in the rollover). Posts: on this site, in his writing standards. On-page fixes: follow-up PR. All four drafts approved.
+
+### Done
+- PR #2 merged (`8b7896f`, merge commit pinned to reviewed head `6d8c627`). Railway deploy `2b715c80` built, passed its healthcheck at 17:22 UTC and went live at 17:28 UTC after a slow switch (Railway lists a degraded-performance recovery incident).
+- Live check: `/api/bracket` shows source ESPN, status ok, 79 matches, Final Columbus Crew 0-0 St. Louis CITY SC, winner St. Louis, PEN, October 21. Real Chrome and headless smoke: FINAL DONE 1/1, 12 cupsets, no console errors, 0 of 79 cells highlight the lower score. The new container's startup scrape sent no Slack alert (only ussoccer.com failed; it now gets HTTP 403 from Railway).
+- Found: the 2026-08-06 deploy (`5b04d6f`) failed its healthcheck, so production ran the 2026-07-29 build until today.
+- PR #3: server-rendered articles (`backend/articles.py`, `backend/article_routes.py`, Jinja templates), the four approved posts in `backend/content/posts/` with a voice pass (contractions, no Oxford comma), `/news`, `/api/articles`, `/robots.txt`, `/sitemap.xml`, favicon, 1200x630 share image, index.html meta and JSON-LD rewrite, bracket-page copy and news list, footer credit. Raw HTML in posts is escaped and unsafe link schemes are dropped. New dependency: `markdown==3.10` (free, pure Python, no network; 3.11.2 was under two weeks old).
+- `docs/grok-content-brief.md`: brief for an AI writer to find U.S. Open Cup news and write draft posts in the site's format. A test parses its example post through the real validator.
+- Tests: 58 offline pass, 2 live skipped by default.
+
+### Next
+1. Crash Override review of PR #3, then the cross-model fresh-eyes gate, then Todd's deploy approval.
+2. After deploy: smoke `/news`, each article, `/sitemap.xml`; submit the sitemap in Google Search Console (Todd's account).
+3. Early January 2027: rollover build (`docs/2027-rollover-plan.md`).
+
+---
+
 ## 2026-10-28: Revive check, 2026 final-state fix, 2027 plan, SEO drafts
 
 **Scope:** handoff `Welch-Advisory-Team/scratch/handoff-us-open-cup-bracket-revive-2026-10-28.md`. Build class EXTERNAL (public site).

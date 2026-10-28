@@ -1,19 +1,21 @@
 ---
-status: DRAFT, not published. Needs Todd's review.
 title: St. Louis CITY SC Win the 2026 U.S. Open Cup on Penalties
 meta_description: St. Louis CITY SC beat Columbus Crew 5-3 on penalties after a 0-0 draw to win the 2026 U.S. Open Cup Final on October 21. Score, shootout and path.
 target_phrase: 2026 U.S. Open Cup final
-secondary_phrases: 2026 U.S. Open Cup winner; St. Louis CITY SC U.S. Open Cup; Columbus Crew U.S. Open Cup final
-suggested_url: /2026/final
-links_to: /2026 (full bracket), /2026/cupsets
-facts_checked: 2026-10-28 against ussoccer.com match recap, Wikipedia (2026 U.S. Open Cup final), ESPN scoreboard API
+season: 2026
+slug: final
+published: 2026-10-28
+status: published
+source: U.S. Soccer, 2026 U.S. Open Cup Final recap | https://www.ussoccer.com/stories/2026/10/usoc/match-recap-st-louis-city-vs-columbus-crew-open-cup-final
+source: ESPN, St. Louis CITY SC at Columbus Crew | https://www.espn.com/soccer/match/_/gameId/401916449/st-louis-city-sc-columbus-crew
+source: Wikipedia, 2026 U.S. Open Cup final | https://en.wikipedia.org/wiki/2026_U.S._Open_Cup_final
 ---
 
 # St. Louis CITY SC Win the 2026 U.S. Open Cup on Penalties
 
 St. Louis CITY SC won the 2026 Lamar Hunt U.S. Open Cup on October 21. They beat Columbus Crew 5-3 in a penalty shootout after 120 minutes without a goal at ScottsMiracle-Gro Field in Columbus, Ohio.
 
-It is the first trophy in the club's history. The title is worth $600,000 in prize money and a place in the 2027 Concacaf Champions Cup.
+It's the first trophy in the club's history. The title is worth $600,000 in prize money and a place in the 2027 Concacaf Champions Cup.
 
 ## How the Final went
 
@@ -40,13 +42,13 @@ Two of their five wins came in shootouts. The other three were by a combined 9-1
 | Round | Date | Result |
 |---|---|---|
 | Round of 32 | April 15 | Won 3-0 at Richmond Kickers |
-| Round of 16 | April 29 | Beat One Knoxville 4-1 |
+| Round of 16 | April 29 | Beat One Knoxville SC 4-1 |
 | Quarterfinal | May 20 | Beat New York City FC 1-0 |
 | Semifinal | September 16 | Beat Orlando City SC 2-1 |
 | Final | October 21 | Drew 0-0 with St. Louis CITY SC, lost 5-3 on penalties |
 
-Columbus did not lose a match in regulation or extra time and played the last four rounds at home.
+Columbus didn't lose a match in regulation or extra time and played the last four rounds at home.
 
 ## See every round
 
-The full 2026 bracket, from the 32 First Round matches in March to the Final, is at [usopencup.welchproductsllc.com/2026](/2026).
+The [full 2026 bracket](/) has every match from the 32 First Round games in March to the Final.

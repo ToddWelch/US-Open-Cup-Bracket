@@ -1,0 +1,22 @@
+{% extends "base.html" %}
+{% block title %}U.S. Open Cup News and Analysis{% endblock %}
+{% block description %}U.S. Open Cup news, results and analysis: 2026 recaps, cupsets, and what to know about the 2027 format, schedule and draw.{% endblock %}
+{% block canonical %}{{ site_url }}/news{% endblock %}
+{% block head %}
+  <meta property="og:type" content="website">
+  <meta property="og:title" content="U.S. Open Cup News and Analysis">
+  <meta property="og:url" content="{{ site_url }}/news">
+{% endblock %}
+{% block content %}
+  <h1>U.S. Open Cup News</h1>
+  <div class="meta">Results, recaps and what's next for America's oldest soccer tournament.</div>
+  {% for a in articles %}
+  <div class="card">
+    <h2><a href="{{ a.path }}">{{ a.title }}</a></h2>
+    <div class="meta" style="margin:0">{{ a.published.strftime("%B %-d, %Y") }}</div>
+    <p>{{ a.meta_description }}</p>
+  </div>
+  {% else %}
+  <p>No articles yet.</p>
+  {% endfor %}
+{% endblock %}
