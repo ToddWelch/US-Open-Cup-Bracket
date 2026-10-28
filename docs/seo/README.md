@@ -42,7 +42,7 @@ Checked 2026-10-28 against https://usopencup.welchproductsllc.com.
 >
 > **Tournament format**
 >
-> 80 teams played seven rounds of single elimination. The First Round (March 17-19) matched 48 professional teams from the USL Championship, USL League One and MLS NEXT Pro against 32 amateur qualifiers. The 32 First Round winners played a Second Round (March 31 and April 1), and the 16 Second Round winners met 16 MLS clubs in the Round of 32 (April 14-15). The Round of 16, Quarterfinals, Semifinals and Final followed.
+> 80 teams played seven rounds of single elimination. The First Round (March 17-19) matched 32 professional teams from the USL Championship, USL League One and MLS NEXT Pro against 32 amateur qualifiers. The 32 First Round winners played a Second Round (March 31 and April 1), and the 16 Second Round winners met 16 MLS clubs in the Round of 32 (April 14-15). The Round of 16, Quarterfinals, Semifinals and Final followed.
 >
 > **Cupsets**
 >

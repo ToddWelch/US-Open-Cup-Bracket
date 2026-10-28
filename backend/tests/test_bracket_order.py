@@ -50,16 +50,32 @@ def build_true_bracket():
     return rounds
 
 
-def test_shuffled_rounds_are_put_in_bracket_order():
-    true_rounds = build_true_bracket()
-    rng = random.Random(2026)
+def shuffled_flat(true_rounds, seed=2026, tag_rounds=False):
+    rng = random.Random(seed)
     flat = []
-    for r in true_rounds:
-        shuffled = r[:]
+    for idx, r in enumerate(true_rounds):
+        shuffled = [dict(m, round=idx) if tag_rounds else dict(m) for m in r]
         rng.shuffle(shuffled)
         flat.extend(shuffled)
+    return flat
 
-    rounds = build_bracket(flat)["rounds"]
+
+def test_shuffled_rounds_are_put_in_bracket_order():
+    rounds = build_bracket(shuffled_flat(build_true_bracket()))["rounds"]
 
     assert [len(r["matches"]) for r in rounds] == [32, 16, 16, 8, 4, 2, 1]
     assert_bracket_topology(rounds)
+
+
+def test_tagged_matches_stay_in_their_round_when_one_is_missing():
+    """Slicing by position let one missing First Round match push a
+    semifinal into the Final slot; round tags keep every match in place."""
+    true_rounds = build_true_bracket()
+    flat = shuffled_flat(true_rounds, tag_rounds=True)
+    flat = [m for m in flat if not (m["round"] == 0 and m["home"] == "T0")]
+
+    rounds = build_bracket(flat)["rounds"]
+
+    assert [len(r["matches"]) for r in rounds] == [31, 16, 16, 8, 4, 2, 1]
+    assert rounds[6]["matches"][0]["home"] == true_rounds[6][0]["home"]
+    assert rounds[6]["matches"][0]["away"] == true_rounds[6][0]["away"]

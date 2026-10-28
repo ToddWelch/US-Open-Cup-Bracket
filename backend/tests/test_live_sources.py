@@ -3,16 +3,25 @@
 The 2026 tournament is complete, so its results are fixed: St. Louis CITY SC
 beat Columbus Crew on penalties (0-0, 5-3) in the Final on October 21, 2026,
 confirmed by ESPN, Wikipedia and ussoccer.com on 2026-10-28.
+
+Skipped unless LIVE_SOURCES=1, so an offline or rate-limited run (Wikipedia
+returns HTTP 429 after repeated calls) does not fail the suite. Run them as
+the acceptance check before any deploy that touches the scrapers:
+    LIVE_SOURCES=1 python -m pytest backend/tests/test_live_sources.py
 """
 
 import sys
 import os
+
+import pytest
 
 # Ensure the backend package is importable when running from the repo root
 sys.path.insert(0, os.path.join(os.path.dirname(__file__), "..", ".."))
 
 from backend import scraper
 from backend.tests.test_bracket_order import assert_bracket_topology
+
+pytestmark = pytest.mark.skipif(os.environ.get("LIVE_SOURCES") != "1", reason="live network check; set LIVE_SOURCES=1")
 
 ROUND_SIZES = [32, 16, 16, 8, 4, 2, 1]
 

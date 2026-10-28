@@ -67,6 +67,35 @@ class TestRoundOrdering:
         assert matches[-1]["note"] == "PEN"
 
 
+class TestErrorPropagation:
+    def test_http_error_is_recorded_and_existing_bracket_kept(self, monkeypatch, tmp_path):
+        """An ESPN HTTP error shows as status "error" (type name only, since
+        the file is public) and never replaces the saved bracket."""
+        monkeypatch.setattr(scraper, "DATA_DIR", str(tmp_path))
+        monkeypatch.setattr(scraper, "BRACKET_FILE", str(tmp_path / "bracket.json"))
+        monkeypatch.setattr(scraper, "SLACK_WEBHOOK_URL", None)
+        existing = scraper.build_bracket([
+            {"home": "A", "away": "B", "homeScore": 1, "awayScore": 0, "winner": "A", "round": 0},
+        ])
+        scraper.save_bracket(existing)
+
+        class ErrorResponse:
+            def raise_for_status(self):
+                raise scraper.requests.HTTPError("400 Client Error: Bad Request for url: " + scraper.ESPN_BASE)
+
+        monkeypatch.setattr(scraper.requests, "get", lambda *a, **k: ErrorResponse())
+        monkeypatch.setattr(scraper, "fetch_wikipedia", lambda: [])
+        monkeypatch.setattr(scraper, "fetch_ussoccer", lambda: [])
+
+        scraper.scrape_bracket()
+        saved = scraper.load_existing()
+
+        espn = next(s for s in saved["sourceResults"] if s["name"] == "ESPN")
+        assert espn == {"name": "ESPN", "status": "error", "error": "HTTPError", "matches": 0}
+        assert saved["scrapeStatus"] == "stale"
+        assert saved["rounds"][0]["matches"][0]["home"] == "A"
+
+
 class TestEasternDates:
     def test_evening_kickoff_keeps_eastern_date(self):
         """8pm ET on Oct 21 is 00:00 UTC on Oct 22; the bracket shows Oct 21."""

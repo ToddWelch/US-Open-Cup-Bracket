@@ -14,7 +14,8 @@ const USLC_L=["Charleston Battery","Detroit City FC","Hartford Athletic","Indy E
 const USL1_L=["AV Alta FC","Charlotte Independence","Chattanooga Red Wolves SC","FC Naples","Forward Madison FC","Greenville Triumph SC","One Knoxville SC","Portland Hearts of Pine","Richmond Kickers","Spokane Velocity FC","Union Omaha","Westchester SC"];
 const MLSNP_L=["Carolina Core FC","Chattanooga FC"];
 const USL2_L=["Vermont Green FC","Flint City Bucks","Steel City FC","Ventura County Fusion","Des Moines Menace","Northern Virginia FC","Asheville City SC","Flower City Union","West Chester United SC","Laredo Heat SC","Little Rock Rangers"];
-function getTier(t){if(!t)return null;if(MLS_L.some(m=>t.includes(m)||m.includes(t)))return"MLS";if(USLC_L.some(m=>t.includes(m)||m.includes(t)))return"USL-C";if(USL1_L.some(m=>t.includes(m)||m.includes(t)))return"USL1";if(MLSNP_L.some(m=>t===m))return"MLSNP";if(USL2_L.some(m=>t.includes(m)||m.includes(t)))return"USL2";return"AM";}
+// Case-insensitive: sources spell the same club differently ("St. Louis CITY SC", "St. Louis City SC")
+function getTier(t){if(!t)return null;const n=t.toLowerCase();const inList=L=>L.some(m=>{const x=m.toLowerCase();return n.includes(x)||x.includes(n);});if(inList(MLS_L))return"MLS";if(inList(USLC_L))return"USL-C";if(inList(USL1_L))return"USL1";if(MLSNP_L.some(m=>m.toLowerCase()===n))return"MLSNP";if(inList(USL2_L))return"USL2";return"AM";}
 function getWinner(m){if(m.winner)return m.winner;if(m.homeScore==null||m.awayScore==null)return null;if(m.homeScore>m.awayScore)return m.home;if(m.awayScore>m.homeScore)return m.away;return null;}
 const TIER_RANK = { MLS: 0, "USL-C": 1, USL1: 2, MLSNP: 3, USL2: 4, AM: 5 };
 function isCupset(m) {

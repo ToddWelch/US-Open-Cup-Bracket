@@ -213,7 +213,8 @@ def scrape_bracket():
             else:
                 source_results.append({"name": name, "status": "no_data", "matches": 0})
         except Exception as e:
-            source_results.append({"name": name, "status": "error", "error": str(e), "matches": 0})
+            # Only the exception type is stored; the file is served publicly
+            source_results.append({"name": name, "status": "error", "error": type(e).__name__, "matches": 0})
             logger.warning("%s failed: %s", name, e)
 
     # Select the source with the most matches. On ties, preserve priority
@@ -319,12 +320,13 @@ def fetch_espn():
     slug_to_round = {meta["espnSlug"]: i for i, meta in enumerate(ROUND_META)}
     by_round = [[] for _ in ROUND_META]
     for event in events:
-        slug = event.get("season", {}).get("slug")
+        slug = (event.get("season") or {}).get("slug")
         if slug not in slug_to_round:
             logger.warning("ESPN: skipping event %s with unknown round slug %r", event.get("id"), slug)
             continue
         match = parse_espn_event(event)
         if match:
+            match["round"] = slug_to_round[slug]
             by_round[slug_to_round[slug]].append(match)
 
     for meta, round_matches in zip(ROUND_META, by_round):
@@ -473,6 +475,8 @@ def fetch_wikipedia():
 
             if matches:
                 logger.info("Wikipedia: %d matches for %s", len(matches), ROUND_META[round_idx]["name"])
+                for m in matches:
+                    m["round"] = round_idx
                 all_matches.extend(matches)
             else:
                 logger.warning("Wikipedia: no match boxes in section %s (%s)", section_idx, ROUND_META[round_idx]["name"])
@@ -980,19 +984,34 @@ def _reorder_1to1_round(anchor_matches, matches):
 
 
 def build_bracket(matches):
-    """Organize flat matches into round structure."""
+    """Organize flat matches into round structure.
+
+    Matches tagged with a "round" index (ESPN, Wikipedia) are grouped on it,
+    so a missing or unparseable match cannot shift later rounds. Untagged
+    matches (ussoccer.com) are sliced by fixed round sizes in list order.
+    """
     rounds = []
-    idx = 0
     round_sizes = [32, 16, 16, 8, 4, 2, 1]
 
+    if matches and all(isinstance(m.get("round"), int) for m in matches):
+        grouped = [[m for m in matches if m["round"] == i] for i in range(len(round_sizes))]
+    else:
+        if matches:
+            logger.warning("Matches carry no round tag; slicing by fixed round sizes")
+        grouped = []
+        idx = 0
+        for size in round_sizes:
+            grouped.append(matches[idx:idx + size])
+            idx += size
+
     for i, size in enumerate(round_sizes):
-        round_matches = matches[idx:idx + size] if idx < len(matches) else []
+        if len(grouped[i]) > size:
+            logger.warning("%s has %d matches, more than the %d expected", ROUND_META[i]["name"], len(grouped[i]), size)
         rounds.append({
             "name": ROUND_META[i]["name"],
             "schedule": ROUND_META[i]["schedule"],
-            "matches": round_matches,
+            "matches": grouped[i],
         })
-        idx += size
 
     # Put every round in bracket order, working back from the Final: each
     # feeder round is reordered to line up with the round after it, which

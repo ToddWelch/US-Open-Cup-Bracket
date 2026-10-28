@@ -1,7 +1,7 @@
 ---
 status: DRAFT, not published. Needs Todd's review.
 title: Every Cupset of the 2026 U.S. Open Cup
-meta_description: All 12 cupsets of the 2026 U.S. Open Cup, from five First Round wins by amateur sides to One Knoxville knocking out D.C. United. Scores and rounds.
+meta_description: All 12 cupsets of the 2026 U.S. Open Cup, from six First Round wins by amateur sides to One Knoxville knocking out D.C. United. Scores and rounds.
 target_phrase: 2026 U.S. Open Cup upsets
 secondary_phrases: U.S. Open Cup cupsets 2026; One Knoxville D.C. United; Colorado Springs Switchbacks Sporting Kansas City
 suggested_url: /2026/cupsets
@@ -26,7 +26,9 @@ The bracket ranks levels in this order: MLS, USL Championship, USL League One, M
 | March 19 | Tennessee Tempo FC (UPSL) | Chattanooga Red Wolves SC (USL League One) | 1-0 |
 | March 19 | Flint City Bucks (USL League Two) | Forward Madison FC (USL League One) | 2-0 |
 
-Three of the six were amateur clubs from the UPSL beating professional teams.
+All six winners were amateur clubs, and three of them came from the UPSL.
+
+FC America CFL Spurs (UPSL) also went through against South Georgia Tormenta FC of USL League One, but by walkover: Tormenta withdrew from the tournament in February. A walkover is not counted as a cupset here.
 
 ## Second Round (March 31 and April 1)
 
