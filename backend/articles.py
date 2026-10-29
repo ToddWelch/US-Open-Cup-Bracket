@@ -6,6 +6,7 @@ invalid post raises, so a bad file fails the deploy's health check instead of
 quietly disappearing from the site.
 """
 
+import html
 import os
 import re
 from dataclasses import dataclass, field
@@ -26,11 +27,16 @@ SLUG_RE = re.compile(r"^[a-z0-9]+(?:-[a-z0-9]+)*$")
 DATE_RE = re.compile(r"^\d{4}-\d{2}-\d{2}$")
 TITLE_TAG_MAX = 60
 META_DESCRIPTION_MAX = 160
-# En and em dashes are banned from public copy; written as code points so
-# this source file holds no dash characters itself
-BANNED_CHARS = (chr(0x2013), chr(0x2014))
+# En and em dashes are banned from public copy, along with the characters
+# that render the same: figure dash, horizontal bar, minus sign, two-em and
+# three-em dash, and small em dash. Written as code points so this source
+# file holds no dash characters itself.
+BANNED_CHARS = tuple(chr(c) for c in (0x2012, 0x2013, 0x2014, 0x2015, 0x2212, 0x2E3A, 0x2E3B, 0xFE58))
 SAFE_LINK = re.compile(r"^(https?://|/|#|mailto:)", re.IGNORECASE)
-SITE_LINK = re.compile(r'href="(/[^"#?]*)')
+SITE_HOST = "usopencup.welchproductsllc.com"
+# Site links: relative ("/2026/final") or absolute to this site, any scheme,
+# case, www prefix or port
+SITE_LINK = re.compile(r'href="(?:https?://(?:www\.)?' + re.escape(SITE_HOST) + r'(?::\d+)?)?(/[^"#?]*)', re.IGNORECASE)
 # Pages outside the articles that posts may link to
 SITE_PAGES = {"/", "/news"}
 
@@ -98,8 +104,8 @@ def render_markdown(text):
     images and link targets that were removed from the output."""
     md = markdown.Markdown(extensions=["tables", _NoRawHtml()])
     md.rejected = []
-    html = md.convert(text)
-    return html, md.rejected
+    rendered = md.convert(text)
+    return rendered, md.rejected
 
 
 def parse_front_matter(text, filename):
@@ -134,6 +140,12 @@ def parse_front_matter(text, filename):
     return fields, "\n".join(lines[end + 1:])
 
 
+def _check_no_dashes(text, filename):
+    for ch in BANNED_CHARS:
+        if ch in text:
+            raise ArticleError(f"{filename}: contains a dash character (U+{ord(ch):04X}) or an entity for one; use a comma, colon or new sentence")
+
+
 def _parse_date(value, name, filename):
     if not DATE_RE.match(value):
         raise ArticleError(f"{filename}: {name} must be YYYY-MM-DD, got {value!r}")
@@ -145,9 +157,8 @@ def _parse_date(value, name, filename):
 
 def build_article(text, filename):
     """Validate one post file and return an Article. Raises ArticleError."""
-    for ch in BANNED_CHARS:
-        if ch in text:
-            raise ArticleError(f"{filename}: contains an en or em dash (U+{ord(ch):04X}); use a comma, colon or new sentence")
+    # Unescaped so an entity in the title or body (&ndash;, &#x2014;) counts too
+    _check_no_dashes(html.unescape(text), filename)
     fields, body = parse_front_matter(text, filename)
 
     missing = [f for f in REQUIRED_FIELDS if not fields.get(f)]
@@ -178,6 +189,8 @@ def build_article(text, filename):
     body_html, rejected = render_markdown(body)
     if rejected:
         raise ArticleError(f"{filename}: not allowed in posts: {', '.join(rejected)}; links must start with https://, / or #, and posts have no images")
+    # Entities such as &mdash; or &#8212; only become dashes once rendered
+    _check_no_dashes(html.unescape(body_html), filename)
 
     return Article(
         title=fields["title"],

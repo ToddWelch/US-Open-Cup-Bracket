@@ -51,6 +51,27 @@ class TestRealPosts:
         with pytest.raises(ArticleError, match="links to /2027/drw"):
             load_articles(str(tmp_path))
 
+    def test_broken_absolute_link_to_this_site_fails_the_load(self, tmp_path):
+        body = f"See [the draw]({articles.SITE_URL}/2027/drw) and [the bracket]({articles.SITE_URL}/)."
+        (tmp_path / "a.md").write_text(make_post(body=body))
+        with pytest.raises(ArticleError, match="links to /2027/drw"):
+            load_articles(str(tmp_path))
+
+    @pytest.mark.parametrize("prefix", [
+        "http://usopencup.welchproductsllc.com",
+        "https://USOPENCUP.welchproductsllc.com",
+        "https://www.usopencup.welchproductsllc.com",
+        "https://usopencup.welchproductsllc.com:443",
+    ])
+    def test_broken_link_variants_to_this_site_fail_the_load(self, tmp_path, prefix):
+        (tmp_path / "a.md").write_text(make_post(body=f"See [the draw]({prefix}/2027/drw)."))
+        with pytest.raises(ArticleError, match="links to /2027/drw"):
+            load_articles(str(tmp_path))
+
+    def test_valid_absolute_link_to_this_site_loads(self, tmp_path):
+        (tmp_path / "a.md").write_text(make_post(body=f"See [the news]({articles.SITE_URL}/news)."))
+        assert len(load_articles(str(tmp_path))) == 1
+
     def test_published_post_cannot_link_to_a_draft(self, tmp_path):
         (tmp_path / "a.md").write_text(make_post(body="See [next](/2026/next-one)."))
         (tmp_path / "b.md").write_text(make_post(slug="next-one", status="draft"))
@@ -131,8 +152,27 @@ class TestValidation:
         assert a.title_tag == "Short tag"
 
     def test_en_dash_is_rejected(self):
-        with pytest.raises(ArticleError, match="en or em dash"):
+        with pytest.raises(ArticleError, match="dash character"):
             build_article(make_post(title=f"Score 2{EN_DASH}1"), "dash.md")
+
+    @pytest.mark.parametrize("snippet", [
+        "&mdash;", "&ndash;", "&#8212;", "&#x2013;", "&horbar;", "&minus;",
+        chr(0x2012), chr(0x2015), chr(0x2212), chr(0x2E3A), chr(0x2E3B), chr(0xFE58),
+        # Markdown turns the escaped "&\#8212;" into "&#8212;" only when rendering,
+        # so only the check on the rendered body catches this one
+        "&\\#8212;",
+    ])
+    def test_dash_entities_and_look_alikes_are_rejected(self, snippet):
+        """They render as a dash on the page, so they break the same rule."""
+        with pytest.raises(ArticleError, match="dash character"):
+            build_article(make_post(body=f"Columbus {snippet} St. Louis"), "dash.md")
+
+    def test_dash_entity_in_title_is_rejected(self):
+        with pytest.raises(ArticleError, match="dash character"):
+            build_article(make_post(title="Final &mdash; recap"), "dash.md")
+
+    def test_plain_hyphens_are_fine(self):
+        build_article(make_post(body="Won 2-1 on April 13-14 at the semi-final."), "ok.md")
 
     def test_source_is_required(self):
         with pytest.raises(ArticleError, match="at least one 'source"):
