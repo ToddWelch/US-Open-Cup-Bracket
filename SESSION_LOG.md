@@ -4,6 +4,27 @@ Newest first. Entries are never deleted.
 
 ---
 
+## 2026-11-05: Search Console verification, webhook rotation under way
+
+**Corrects the entry below:** PR #4 was approved by Crash Override at `c7d0b29`, merged with Todd's approval (`c09648c`) and deployed on 2026-10-29 at 10:14 UTC. The live site was checked after the deploy.
+
+### Done
+- Added Todd's `google-site-verification` meta tag to `frontend/index.html` for Search Console (URL-prefix, HTML tag method). The token is public by design.
+- Wrote `scratch/claude-in-chrome-prompt-2026-11-05.md` for the remaining browser tasks: sitemap submit, live-page check in real Chrome, webhook rotation.
+
+### Found
+- **Pro Wrestling Ratings uses the same Slack webhook as the bracket** (compared across 26 of 27 Railway services without printing values; SellerSKU / postgres-develop was unreadable). Rotation must update both services before the old webhook is deleted. Only those two projects reference it in code on this box; VPS jobs and n8n flows were not checked, so the prompt checks the sender's history in #web-app-alerts before any delete.
+- Search Console: the account Claude in Chrome used lists only `welchcommercesystems.com` and `tcodemanager.com`. `welchproductsllc.com` has an existing `google-site-verification` DNS TXT record, from an account or Workspace setup not identified here.
+- DNS for `welchproductsllc.com` is on SiteGround; `usopencup` is a CNAME to Railway.
+
+### Next
+1. After this deploys: Todd clicks Verify in Search Console, then Claude in Chrome submits `https://usopencup.welchproductsllc.com/sitemap.xml`.
+2. Webhook rotation (Todd, through the prompt). When he says "rotated": confirm both services hold the same new value, send one test alert, then he deletes the old webhook.
+3. Hand `docs/grok-content-brief.md` to the Grok agent.
+4. Early January 2027: rollover build (`docs/2027-rollover-plan.md`).
+
+---
+
 ## 2026-10-28 (evening): Articles live, main protected, content hardening
 
 **Scope:** Todd's approvals: deploy PR #3, protect `main`, open a hardening PR. Build class EXTERNAL.
