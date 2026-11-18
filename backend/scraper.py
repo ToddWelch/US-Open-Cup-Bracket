@@ -331,11 +331,15 @@ def scrape_bracket(season=None):
         outcome = f"Using {source_used} instead."
     elif fewer:
         outcome = f"The saved bracket was kept: {source_used} has fewer matches. The bracket is not updating."
-    else:
+    elif existing is not None:
         outcome = "The saved bracket was kept. The bracket is not updating."
+    else:
+        outcome = "Nothing is saved yet, so the page shows an empty bracket."
+    # The outcome is part of each alert's repeat key: when the backup stops
+    # covering, the new outcome is sent at once instead of six hours later
     for name, problems in rejected.items():
         send_throttled_alert(
-            ("invalid", name),
+            ("invalid", name, replaced),
             f":warning: *US Open Cup Bracket - {name} data failed checks* ({season['year']})\n"
             + "\n".join(problems[:5])
             + f"\n{outcome}",
@@ -351,9 +355,8 @@ def scrape_bracket(season=None):
             f"ESPN: {espn['status']} at {now.strftime('%Y-%m-%d %H:%M UTC')}\n"
             f"Wikipedia (backup): {backup}\n"
         )
-        if wiki["status"] != "ok":
-            msg += ":red_circle: *No source has data - bracket is not updating*"
-        send_throttled_alert(("sources", espn["status"], wiki["status"]), msg)
+        msg += outcome if replaced else f":red_circle: *{outcome}*"
+        send_throttled_alert(("sources", espn["status"], wiki["status"], replaced), msg)
 
     # Build scrape status metadata. The page shows scrapeSource next to the
     # matches, so kept data keeps the source it came from.
