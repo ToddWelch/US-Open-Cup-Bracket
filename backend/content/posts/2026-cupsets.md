@@ -5,6 +5,7 @@ target_phrase: 2026 U.S. Open Cup upsets
 season: 2026
 slug: cupsets
 published: 2026-10-28
+updated: 2026-11-18
 status: published
 source: ESPN, 2026 U.S. Open Cup scoreboard | https://www.espn.com/soccer/scoreboard/_/league/usa.open
 source: Wikipedia, 2026 U.S. Open Cup (teams and results) | https://en.wikipedia.org/wiki/2026_U.S._Open_Cup
@@ -57,4 +58,4 @@ Three non-MLS clubs reached the Round of 16, and all three went out there:
 - Colorado Springs Switchbacks FC drew 2-2 at Colorado Rapids and lost on penalties.
 - One Knoxville SC lost 4-1 at Columbus Crew.
 
-All eight quarterfinalists were MLS clubs. St. Louis CITY SC went on to [win the title on penalties](/2026/final). The [full 2026 bracket](/) marks every cupset.
+All eight quarterfinalists were MLS clubs. St. Louis CITY SC went on to [win the title on penalties](/2026/final). The [full 2026 bracket](/2026) marks every cupset.

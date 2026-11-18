@@ -4,11 +4,16 @@ import re
 import logging
 import tempfile
 import threading
+import time
 from datetime import datetime, timezone
 from zoneinfo import ZoneInfo
 
 import requests
-from bs4 import BeautifulSoup
+
+try:
+    from . import seasons
+except ImportError:
+    import seasons
 
 logger = logging.getLogger(__name__)
 
@@ -19,47 +24,59 @@ _write_lock = threading.Lock()
 
 # ESPN public API for US Open Cup
 ESPN_BASE = "https://site.api.espn.com/apis/site/v2/sports/soccer/usa.open/scoreboard"
-SEASON_YEAR = "2026"
 
 # Match dates are shown in Eastern Time (an 8pm ET kickoff is the next day in UTC)
 EASTERN = ZoneInfo("America/New_York")
 
 # Wikipedia API for structured match data
 WIKI_API = "https://en.wikipedia.org/w/api.php"
-WIKI_PAGE = "2026_U.S._Open_Cup"
-
-# Fallback: US Soccer schedule page
-USSOCCER_URL = "https://www.ussoccer.com/us-open-cup/schedule"
+WIKI_HEADERS = {"User-Agent": "USOpenCupBracket/1.0 (https://usopencup.welchproductsllc.com)"}
 
 # Slack webhook for alerts (set via environment variable)
 SLACK_WEBHOOK_URL = os.environ.get("SLACK_WEBHOOK_URL")
 
-# Round metadata. "dates" feeds the game-day check; "espnSlug" is the
-# season.slug ESPN puts on each event of that round (verified live 2026-10-28).
-ROUND_META = [
-    {"name": "First Round", "schedule": "Mar 17-19", "dates": "20260317-20260325", "espnSlug": "first-round"},
-    {"name": "Second Round", "schedule": "Mar 31 / Apr 1", "dates": "20260331-20260402", "espnSlug": "second-round"},
-    {"name": "Round of 32", "schedule": "Apr 14-15", "dates": "20260414-20260416", "espnSlug": "round-of-32"},
-    {"name": "Round of 16", "schedule": "Apr 28-29", "dates": "20260428-20260430", "espnSlug": "round-of-16"},
-    {"name": "Quarterfinals", "schedule": "May 19-20", "dates": "20260519-20260521", "espnSlug": "quarterfinals"},
-    {"name": "Semifinals", "schedule": "Sep 15-16", "dates": "20260915-20260917", "espnSlug": "semifinals"},
-    {"name": "Final", "schedule": "Oct 21", "dates": "20261021-20261022", "espnSlug": "final"},
-]
-
-BROWSER_HEADERS = {
-    "User-Agent": "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/131.0.0.0 Safari/537.36",
-    "Accept": "text/html,application/xhtml+xml,application/xml;q=0.9,*/*;q=0.8",
-}
+# The same alert goes out at most once in this window, so a source that stays
+# down does not post on every two-hour scrape
+ALERT_REPEAT_SECONDS = 6 * 3600
+_last_alert = {}
 
 
-def load_existing():
+def _season(season):
+    return season or seasons.current()
+
+
+def round_window(rnd):
+    """(start, end) as YYYYMMDD strings, or None for a round with no dates yet."""
+    parts = rnd.get("dates", "").split("-")
+    if len(parts) == 2 and all(parts):
+        return parts[0], parts[1]
+    return None
+
+
+def in_season(season=None, today=None):
+    """True from the first day of the First Round to the day after the Final
+    (Eastern). Outside it, a source with no matches is expected, not a failure."""
+    season = _season(season)
+    today = today or datetime.now(EASTERN).strftime("%Y%m%d")
+    first = round_window(season["rounds"][0])
+    last = round_window(season["rounds"][-1])
+    return bool(first and last) and first[0] <= today <= last[1]
+
+
+def load_existing(season=None):
+    """The saved bracket for this season, or None. A file saved for another
+    season (left over from before a rollover) counts as missing."""
+    season = _season(season)
     if not os.path.exists(BRACKET_FILE):
         return None
     try:
         with open(BRACKET_FILE, "r") as f:
-            return json.load(f)
+            data = json.load(f)
     except (json.JSONDecodeError, OSError):
         return None
+    if data.get("season") != season["year"]:
+        return None
+    return data
 
 
 def save_bracket(data):
@@ -113,16 +130,25 @@ def send_slack_alert(message):
         logger.error("Slack alert failed: %s", type(e).__name__)
 
 
-def has_games_today(bracket_data):
+def send_throttled_alert(key, message):
+    """Send an alert unless the same kind went out within ALERT_REPEAT_SECONDS."""
+    now = time.monotonic()
+    last = _last_alert.get(key)
+    if last is not None and now - last < ALERT_REPEAT_SECONDS:
+        logger.info("Alert %s sent recently, not repeating", key)
+        return
+    _last_alert[key] = now
+    send_slack_alert(message)
+
+
+def has_games_today(bracket_data, season=None):
     """Check whether any games are scheduled or live today (Eastern Time).
 
     Accepts pre-loaded bracket data to avoid a redundant file read.
     Returns True if polling should proceed, False to skip.
     """
-    from zoneinfo import ZoneInfo
-
-    et = ZoneInfo("America/New_York")
-    today = datetime.now(et).strftime("%Y%m%d")
+    season = _season(season)
+    today = datetime.now(EASTERN).strftime("%Y%m%d")
 
     # No data yet: default to polling so we pick up initial results
     if bracket_data is None:
@@ -143,7 +169,7 @@ def has_games_today(bracket_data):
                 any_game_time = True
                 try:
                     dt = datetime.fromisoformat(gt.replace("Z", "+00:00"))
-                    if dt.astimezone(et).strftime("%Y%m%d") == today:
+                    if dt.astimezone(EASTERN).strftime("%Y%m%d") == today:
                         return True
                 except (ValueError, TypeError):
                     pass
@@ -152,24 +178,48 @@ def has_games_today(bracket_data):
     if any_game_time:
         return False
 
-    # Fall back to ROUND_META date ranges (only when no gameTime data exists)
-    for meta in ROUND_META:
-        date_range = meta.get("dates", "")
-        if "-" in date_range:
-            parts = date_range.split("-")
-            if len(parts) == 2 and parts[0] <= today <= parts[1]:
-                return True
+    # Fall back to the season's round date ranges (only when no gameTime data exists)
+    for rnd in season["rounds"]:
+        window = round_window(rnd)
+        if window and window[0] <= today <= window[1]:
+            return True
 
     return False
 
 
-def scrape_espn_fast():
-    """ESPN-only fast poll for live game updates. Skips Wikipedia/ussoccer."""
-    existing = load_existing()
+def validate_bracket(data, season=None):
+    """Problems that mean the data is wrong and must not replace the saved
+    bracket: a round with more matches than the season has, a winner who is
+    not in the match, or a winner the score contradicts."""
+    season = _season(season)
+    problems = []
+    for rnd, meta in zip(data.get("rounds", []), season["rounds"]):
+        name = meta["name"]
+        if len(rnd["matches"]) > meta["size"]:
+            problems.append(f"{name} has {len(rnd['matches'])} matches, at most {meta['size']} expected")
+        for m in rnd["matches"]:
+            winner = m.get("winner")
+            if not winner:
+                continue
+            if winner not in (m.get("home"), m.get("away")):
+                problems.append(f"{name}: winner {winner} is not in {m.get('home')} v {m.get('away')}")
+                continue
+            hs, aws = m.get("homeScore"), m.get("awayScore")
+            if hs is not None and aws is not None and hs != aws:
+                by_score = m["home"] if hs > aws else m["away"]
+                if winner != by_score:
+                    problems.append(f"{name}: {winner} marked as winner of {m['home']} {hs}-{aws} {m['away']}")
+    return problems
+
+
+def scrape_espn_fast(season=None):
+    """ESPN-only fast poll for live game updates. Skips Wikipedia."""
+    season = _season(season)
+    existing = load_existing(season)
     now = datetime.now(timezone.utc)
 
     try:
-        matches = fetch_espn()
+        matches = fetch_espn(season)
     except Exception as e:
         logger.warning("ESPN fast poll failed: %s", e)
         return
@@ -178,7 +228,12 @@ def scrape_espn_fast():
         logger.info("ESPN fast poll: no data")
         return
 
-    new_data = build_bracket(matches)
+    new_data = build_bracket(matches, season)
+
+    problems = validate_bracket(new_data, season)
+    if problems:
+        logger.warning("ESPN fast poll: data failed checks, keeping saved bracket: %s", "; ".join(problems))
+        return
 
     # Never overwrite with less data
     if existing and count_matches(new_data) < count_matches(existing):
@@ -196,15 +251,15 @@ def scrape_espn_fast():
     logger.info("ESPN fast poll: updated %d matches", count_matches(new_data))
 
 
-def scrape_bracket():
-    existing = load_existing()
+def scrape_bracket(season=None):
+    season = _season(season)
+    existing = load_existing(season)
     now = datetime.now(timezone.utc)
 
     # Try all sources and track results
     sources = [
         ("ESPN", fetch_espn),
         ("Wikipedia", fetch_wikipedia),
-        ("ussoccer.com", fetch_ussoccer),
     ]
 
     source_results = []
@@ -212,7 +267,7 @@ def scrape_bracket():
 
     for name, fetcher in sources:
         try:
-            result = fetcher()
+            result = fetcher(season)
             if result:
                 source_results.append({"name": name, "status": "ok", "matches": len(result)})
                 all_results[name] = result
@@ -224,8 +279,8 @@ def scrape_bracket():
             logger.warning("%s failed: %s", name, e)
 
     # Select the source with the most matches. On ties, preserve priority
-    # order (ESPN > Wikipedia > ussoccer.com) since sources are iterated in
-    # that order and max() with key is stable.
+    # order (ESPN > Wikipedia) since sources are iterated in that order and
+    # max() with key is stable.
     matches = []
     source_used = None
     if all_results:
@@ -247,40 +302,56 @@ def scrape_bracket():
             comparison, source_used, len(matches),
         )
 
-    # Count failures (error or no_data)
-    failures = sum(1 for s in source_results if s["status"] != "ok")
-
-    # Alert if 2+ sources failed
-    if failures >= 2:
-        failed_names = [s["name"] for s in source_results if s["status"] != "ok"]
-        ok_names = [s["name"] for s in source_results if s["status"] == "ok"]
+    # ESPN is the primary source. An error is a failure any time; no data is
+    # a failure only during the tournament (before it, there is nothing to show).
+    espn, wiki = source_results
+    if espn["status"] == "error" or (espn["status"] == "no_data" and in_season(season)):
+        backup = f"{wiki['matches']} matches" if wiki["status"] == "ok" else wiki["status"]
         msg = (
-            f":warning: *US Open Cup Bracket - Data Source Alert*\n"
-            f"{failures}/3 sources failed at {now.strftime('%Y-%m-%d %H:%M UTC')}\n"
-            f"Failed: {', '.join(failed_names)}\n"
-            f"Working: {', '.join(ok_names) if ok_names else 'NONE'}\n"
+            f":warning: *US Open Cup Bracket - Data Source Alert* ({season['year']})\n"
+            f"ESPN: {espn['status']} at {now.strftime('%Y-%m-%d %H:%M UTC')}\n"
+            f"Wikipedia (backup): {backup}\n"
         )
-        if not ok_names:
-            msg += ":red_circle: *All sources down - bracket data is stale*"
-        send_slack_alert(msg)
+        if wiki["status"] != "ok":
+            msg += ":red_circle: *No source has data - bracket is not updating*"
+        send_throttled_alert(("sources", espn["status"], wiki["status"]), msg)
 
     # Build scrape status metadata
     scrape_info = {
         "lastScrape": now.isoformat(),
         "scrapeSource": source_used,
-        "scrapeStatus": "ok" if matches else "stale",
         "sourceResults": source_results,
     }
 
     if not matches:
-        logger.warning("All sources returned no data")
-        if existing:
-            existing.update(scrape_info)
-            existing["scrapeStatus"] = "stale"
-            save_bracket(existing)
+        # Before the pairings are out, an empty bracket is the right answer
+        waiting = not in_season(season) and count_matches(existing) == 0
+        if waiting:
+            logger.info("No source has matches yet")
+        else:
+            logger.warning("All sources returned no data")
+        data = existing or build_bracket([], season)
+        data.update(scrape_info)
+        data["scrapeStatus"] = "waiting" if waiting else "stale"
+        save_bracket(data)
         return
 
-    new_data = build_bracket(matches)
+    new_data = build_bracket(matches, season)
+
+    problems = validate_bracket(new_data, season)
+    if problems:
+        logger.warning("%s data failed checks, keeping saved bracket: %s", source_used, "; ".join(problems))
+        send_throttled_alert(
+            ("invalid", source_used),
+            f":warning: *US Open Cup Bracket - {source_used} data failed checks* ({season['year']})\n"
+            + "\n".join(problems[:5])
+            + "\nThe saved bracket was kept.",
+        )
+        data = existing or build_bracket([], season)
+        data.update(scrape_info)
+        data["scrapeStatus"] = "stale"
+        save_bracket(data)
+        return
 
     # Never overwrite with less data
     if existing and count_matches(new_data) < count_matches(existing):
@@ -288,10 +359,9 @@ def scrape_bracket():
             "New data has fewer matches (%d vs %d), keeping existing",
             count_matches(new_data), count_matches(existing)
         )
-        if existing:
-            existing.update(scrape_info)
-            existing["scrapeStatus"] = "stale"
-            save_bracket(existing)
+        existing.update(scrape_info)
+        existing["scrapeStatus"] = "stale"
+        save_bracket(existing)
         return
 
     new_data.update(scrape_info)
@@ -303,41 +373,64 @@ def scrape_bracket():
 
 # ─── ESPN API (PRIMARY) ───────────────────────────────────────────────
 
-def espn_params():
+def espn_params(season=None):
     """Query params for the season scoreboard (verified live 2026-10-28).
 
     ESPN answers a date range (dates=YYYYMMDD-YYYYMMDD) with HTTP 400, so the
     whole season is requested by year in one call.
     """
-    return {"dates": SEASON_YEAR, "limit": 500}
+    return {"dates": str(_season(season)["year"]), "limit": 500}
 
 
-def fetch_espn():
+def round_for_date(date_str, season=None):
+    """Index of the round whose dates hold this kickoff (Eastern), or None."""
+    season = _season(season)
+    try:
+        day = datetime.fromisoformat(date_str.replace("Z", "+00:00")).astimezone(EASTERN).strftime("%Y%m%d")
+    except (AttributeError, ValueError):
+        return None
+    for i, rnd in enumerate(season["rounds"]):
+        window = round_window(rnd)
+        if window and window[0] <= day <= window[1]:
+            return i
+    return None
+
+
+def fetch_espn(season=None):
     """Fetch every match of the season from ESPN's public scoreboard API.
 
     Each event is placed in its round by ESPN's season.slug, so the flat list
-    comes back in bracket round order whatever order ESPN sends it in. Request
+    comes back in bracket round order whatever order ESPN sends it in. An
+    event with a slug the season does not list (ESPN's names for a new round
+    are not known until it posts them) is placed by its kickoff date. Request
     and response errors propagate so scrape_bracket records them as an error.
     """
-    resp = requests.get(ESPN_BASE, params=espn_params(), timeout=15)
+    season = _season(season)
+    resp = requests.get(ESPN_BASE, params=espn_params(season), timeout=15)
     resp.raise_for_status()
     events = resp.json().get("events", [])
 
-    slug_to_round = {meta["espnSlug"]: i for i, meta in enumerate(ROUND_META)}
-    by_round = [[] for _ in ROUND_META]
+    meta = season["rounds"]
+    slug_to_round = {r["espnSlug"]: i for i, r in enumerate(meta)}
+    by_round = [[] for _ in meta]
     for event in events:
         slug = (event.get("season") or {}).get("slug")
-        if slug not in slug_to_round:
-            logger.warning("ESPN: skipping event %s with unknown round slug %r", event.get("id"), slug)
-            continue
+        round_idx = slug_to_round.get(slug)
+        if round_idx is None:
+            round_idx = round_for_date(event.get("date"), season)
+            if round_idx is None:
+                logger.warning("ESPN: skipping event %s with unknown round slug %r", event.get("id"), slug)
+                continue
+            logger.warning("ESPN: event %s has unknown round slug %r; placed in %s by its date",
+                           event.get("id"), slug, meta[round_idx]["name"])
         match = parse_espn_event(event)
         if match:
-            match["round"] = slug_to_round[slug]
-            by_round[slug_to_round[slug]].append(match)
+            match["round"] = round_idx
+            by_round[round_idx].append(match)
 
-    for meta, round_matches in zip(ROUND_META, by_round):
+    for rnd, round_matches in zip(meta, by_round):
         if round_matches:
-            logger.info("ESPN: %d matches for %s", len(round_matches), meta["name"])
+            logger.info("ESPN: %d matches for %s", len(round_matches), rnd["name"])
 
     return [m for round_matches in by_round for m in round_matches]
 
@@ -438,27 +531,29 @@ def parse_espn_event(event):
         return None
 
 
-# ─── WIKIPEDIA API (BACKUP 2) ─────────────────────────────────────────
+# ─── WIKIPEDIA API (BACKUP) ───────────────────────────────────────────
 
-def fetch_wikipedia():
+def fetch_wikipedia(season=None):
     """Fetch match data from Wikipedia's structured wikitext."""
+    season = _season(season)
+    meta = season["rounds"]
     all_matches = []
 
     # First, get current section list to find round sections
     try:
         resp = requests.get(WIKI_API, timeout=15, params={
             "action": "parse",
-            "page": WIKI_PAGE,
+            "page": season["wikiPage"],
             "prop": "sections",
             "format": "json",
-        }, headers={"User-Agent": "USOpenCupBracket/1.0 (usopencup.welchproductsllc.com)"})
+        }, headers=WIKI_HEADERS)
         resp.raise_for_status()
         sections = resp.json().get("parse", {}).get("sections", [])
     except Exception as e:
         logger.warning("Wikipedia sections fetch failed: %s", e)
         return []
 
-    section_map = map_wiki_sections(sections)
+    section_map = map_wiki_sections(sections, season)
 
     if not section_map:
         logger.warning("Wikipedia: no round sections found")
@@ -469,23 +564,23 @@ def fetch_wikipedia():
         try:
             resp = requests.get(WIKI_API, timeout=15, params={
                 "action": "parse",
-                "page": WIKI_PAGE,
+                "page": season["wikiPage"],
                 "prop": "wikitext",
                 "section": section_idx,
                 "format": "json",
-            }, headers={"User-Agent": "USOpenCupBracket/1.0 (usopencup.welchproductsllc.com)"})
+            }, headers=WIKI_HEADERS)
             resp.raise_for_status()
 
             wikitext = resp.json().get("parse", {}).get("wikitext", {}).get("*", "")
             matches = parse_wiki_matches(wikitext)
 
             if matches:
-                logger.info("Wikipedia: %d matches for %s", len(matches), ROUND_META[round_idx]["name"])
+                logger.info("Wikipedia: %d matches for %s", len(matches), meta[round_idx]["name"])
                 for m in matches:
                     m["round"] = round_idx
                 all_matches.extend(matches)
             else:
-                logger.warning("Wikipedia: no match boxes in section %s (%s)", section_idx, ROUND_META[round_idx]["name"])
+                logger.warning("Wikipedia: no match boxes in section %s (%s)", section_idx, meta[round_idx]["name"])
 
         except Exception as e:
             logger.warning("Wikipedia fetch failed for section %s: %s", section_idx, e)
@@ -494,31 +589,29 @@ def fetch_wikipedia():
     return all_matches
 
 
-# Section headings that hold each round's match boxes
-WIKI_ROUND_TITLES = {
-    "first round": 0,
-    "second round": 1,
-    "round of 32": 2,
-    "round of 16": 3,
-    "quarterfinals": 4,
-    "quarter-finals": 4,
-    "semifinals": 5,
-    "semi-finals": 5,
-    "final": 6,
-}
+def wiki_round_titles(season=None):
+    """Section headings that hold each round's match boxes: the round names,
+    plus the hyphenated spellings Wikipedia sometimes uses."""
+    titles = {}
+    for i, rnd in enumerate(_season(season)["rounds"]):
+        name = rnd["name"].lower()
+        titles[name] = i
+        titles[name.replace("quarterfinals", "quarter-finals").replace("semifinals", "semi-finals")] = i
+    return titles
 
 
-def map_wiki_sections(sections):
+def map_wiki_sections(sections, season=None):
     """Map round index to Wikipedia section index by exact heading match.
 
     Substring matching put "Semifinals" and "Quarterfinals and beyond" in the
     Final slot, so a heading must equal a round title to count.
     """
+    titles = wiki_round_titles(season)
     section_map = {}
     for s in sections:
         title = s.get("line", "").strip().lower()
-        if title in WIKI_ROUND_TITLES:
-            section_map[WIKI_ROUND_TITLES[title]] = s["index"]
+        if title in titles:
+            section_map[titles[title]] = s["index"]
     return section_map
 
 
@@ -587,7 +680,7 @@ def parse_wiki_box(box):
     home = clean_team(team1_raw)
     away = clean_team(team2_raw)
 
-    score_clean = score_raw.replace('\u2013', '-').replace('\u2014', '-')
+    score_clean = score_raw.replace('–', '-').replace('—', '-')
     note = None
 
     if "vo" in score_clean.lower() or "w/o" in score_clean.lower() or "ff" in score_clean.lower():
@@ -639,206 +732,6 @@ def parse_wiki_box(box):
         "note": note,
         "winner": winner,
     }
-
-
-# ─── US SOCCER SUPPLEMENTAL (BEST-EFFORT) ────────────────────────────
-
-# Regex for trailing notation such as (Forfeit), (AET), (AET & PKs), (PKs), (PEN)
-_NOTATION_RE = re.compile(
-    r'\s*\((?:Forfeit|FF|AET\s*&\s*PKs|AET|PKs?|PEN)\)\s*$',
-    re.IGNORECASE,
-)
-
-# Also handle trailing "w/o" or "walkover" text
-_WALKOVER_RE = re.compile(r'\s+(?:w/o|walkover)\s*$', re.IGNORECASE)
-
-# Scoreline regex: HomeTeam <score> [(<pen>)] - <score> [(<pen>)] AwayTeam
-_SCORELINE_RE = re.compile(
-    r'^(.+?)\s+(\d+)\s*(?:\((\d+)\))?\s*-\s*(\d+)\s*(?:\((\d+)\))?\s+(.+?)$'
-)
-
-
-def parse_scoreline(text):
-    """Parse a single scoreline string into a match dict.
-
-    Handles notation like (Forfeit), (AET), (AET & PKs), (PEN), and
-    penalty shootout scores in parentheses. Returns None if the text
-    cannot be parsed.
-    """
-    if not text or not text.strip():
-        return None
-
-    # Normalize whitespace: collapse runs of spaces, strip edges
-    cleaned = re.sub(r'\s+', ' ', text).strip()
-
-    # Strip and capture trailing notation BEFORE applying scoreline regex.
-    # This prevents notation text from polluting the away team name.
-    notation_text = None
-    notation_match = _NOTATION_RE.search(cleaned)
-    if notation_match:
-        notation_text = notation_match.group(0).strip().strip('()')
-        cleaned = cleaned[:notation_match.start()].strip()
-    else:
-        walkover_match = _WALKOVER_RE.search(cleaned)
-        if walkover_match:
-            notation_text = walkover_match.group(0).strip()
-            cleaned = cleaned[:walkover_match.start()].strip()
-
-    # Apply the scoreline regex to the cleaned (notation-free) text
-    m = _SCORELINE_RE.match(cleaned)
-    if not m:
-        return None
-
-    home_name = m.group(1).strip()
-    home_score = int(m.group(2))
-    home_pen = int(m.group(3)) if m.group(3) else None
-    away_score = int(m.group(4))
-    away_pen = int(m.group(5)) if m.group(5) else None
-    away_name = m.group(6).strip()
-
-    # Determine the note field from captured notation and penalty scores
-    note = None
-    if notation_text:
-        nt_lower = notation_text.lower()
-        if 'forfeit' in nt_lower or nt_lower == 'ff':
-            note = "FF"
-        elif 'pk' in nt_lower or nt_lower == 'pen':
-            note = "PEN"
-        elif 'aet' in nt_lower:
-            # "AET & PKs" already handled above via 'pks' check;
-            # plain "AET" falls here
-            note = "AET"
-        elif 'w/o' in nt_lower or 'walkover' in nt_lower:
-            note = "FF"
-
-    # If penalty score groups are present but no notation was found, infer PEN
-    if (home_pen is not None or away_pen is not None) and note is None:
-        note = "PEN"
-
-    # If penalty scores are present alongside AET notation, upgrade to PEN
-    # because penalty kicks take precedence in describing the result
-    if note == "AET" and (home_pen is not None or away_pen is not None):
-        note = "PEN"
-
-    return {
-        "home": home_name,
-        "away": away_name,
-        "homeScore": home_score,
-        "awayScore": away_score,
-        "homePen": home_pen,
-        "awayPen": away_pen,
-        "date": None,
-        "note": note,
-    }
-
-
-def fetch_ussoccer():
-    """Best-effort scrape of ussoccer.com schedule page.
-
-    This is a supplemental source, not a reliable fallback. The page
-    structure changes frequently and the parser may return zero matches.
-    ESPN and Wikipedia are the primary and backup sources respectively.
-    """
-    try:
-        resp = requests.get(USSOCCER_URL, timeout=15, headers=BROWSER_HEADERS)
-        resp.raise_for_status()
-    except requests.RequestException as e:
-        logger.warning("ussoccer.com fetch failed: %s", e)
-        return []
-
-    try:
-        soup = BeautifulSoup(resp.text, "html.parser")
-        return parse_ussoccer(soup)
-    except Exception as e:
-        logger.warning("ussoccer.com parse failed: %s", e)
-        return []
-
-
-def parse_ussoccer(soup):
-    """Best-effort parse of match data from ussoccer.com schedule page.
-
-    Tries multiple CSS selectors in priority order to handle page
-    structure changes gracefully. This parser is supplemental; the
-    page layout shifts often and may yield zero usable rows.
-    """
-    selectors = [
-        ("table tbody tr", "table"),
-        (".schedule-list .match, .match-row, [data-match]", "list"),
-    ]
-
-    for selector, label in selectors:
-        rows = soup.select(selector)
-        if not rows:
-            continue
-
-        logger.info("ussoccer.com: using '%s' selector (%d elements)", label, len(rows))
-        matches = []
-
-        for row in rows:
-            try:
-                if row.name == "tr":
-                    cells = row.find_all("td")
-                    if cells and len(cells) >= 1:
-                        match = parse_ussoccer_row(cells)
-                        if match:
-                            matches.append(match)
-                else:
-                    # Non-table element: extract text and try parse_scoreline
-                    text = row.get_text(" ", strip=True)
-                    match = parse_scoreline(text)
-                    if match:
-                        matches.append(match)
-            except Exception as e:
-                logger.debug("Skipping ussoccer row: %s", e)
-                continue
-
-        if matches:
-            return matches
-
-    logger.warning("ussoccer.com: no selectors produced matches")
-    return []
-
-
-def parse_ussoccer_row(cells):
-    """Parse a table row from ussoccer.com into a match dict.
-
-    Tries joining all cell text for parse_scoreline, then falls back to
-    individual cell text. Also checks for bold tags to detect the winner.
-    """
-    # Strategy 1: join all cell text and try parse_scoreline
-    joined = " ".join(c.get_text(strip=True) for c in cells)
-    match = parse_scoreline(joined)
-
-    # Strategy 2: try each cell individually
-    if not match:
-        for cell in cells:
-            text = cell.get_text(strip=True)
-            match = parse_scoreline(text)
-            if match:
-                break
-
-    if not match:
-        return None
-
-    # Bold-tag winner detection: check raw BeautifulSoup Tag objects for <b>
-    # tags. The bolded text might wrap a team name, a score, or both. We
-    # extract it and match against home/away names to set a winner field.
-    winner = None
-    for cell in cells:
-        bold_tag = cell.find("b")
-        if bold_tag:
-            bold_text = bold_tag.get_text(strip=True)
-            if bold_text and match.get("home") and bold_text in match["home"]:
-                winner = match["home"]
-                break
-            if bold_text and match.get("away") and bold_text in match["away"]:
-                winner = match["away"]
-                break
-
-    if winner:
-        match["winner"] = winner
-
-    return match
 
 
 # ─── BRACKET BUILDER ──────────────────────────────────────────────────
@@ -934,11 +827,13 @@ def _reorder_feeder_round(feeder_matches, next_round_matches):
 def _reorder_1to1_round(anchor_matches, matches):
     """Reorder matches so matches[i] shares a team with anchor_matches[i].
 
-    Used for the R2->R32 transition where each R2 winner feeds into one R32
-    match (1:1 mapping, not the usual 2:1 reduction). The frontend renders
-    it as R2[i] connecting to R32[i]. build_bracket passes R32 (already in
-    bracket order) as the anchor and R2 as the matches, so R2[i] becomes the
-    match whose winner plays in R32[i].
+    Used for the transition into the entry round, where new teams join and
+    each winner of the round before feeds one match (1:1, not the usual 2:1
+    reduction): R2 to R32 in 2026, First Round to Round of 64 in 2027. The
+    frontend renders it as feeder[i] connecting to entry[i]. build_bracket
+    passes the entry round (already in bracket order) as the anchor and the
+    round before it as the matches, so matches[i] becomes the match whose
+    winner plays in anchor_matches[i].
 
     Returns a new list with corrected ordering, or the original list unchanged
     if reordering cannot be determined.
@@ -989,15 +884,17 @@ def _reorder_1to1_round(anchor_matches, matches):
     return reordered
 
 
-def build_bracket(matches):
-    """Organize flat matches into round structure.
+def build_bracket(matches, season=None):
+    """Organize flat matches into the season's round structure.
 
     Matches tagged with a "round" index (ESPN, Wikipedia) are grouped on it,
     so a missing or unparseable match cannot shift later rounds. Untagged
-    matches (ussoccer.com) are sliced by fixed round sizes in list order.
+    matches are sliced by the round sizes in list order.
     """
+    season = _season(season)
+    meta = season["rounds"]
+    round_sizes = [r["size"] for r in meta]
     rounds = []
-    round_sizes = [32, 16, 16, 8, 4, 2, 1]
 
     if matches and all(isinstance(m.get("round"), int) for m in matches):
         grouped = [[m for m in matches if m["round"] == i] for i in range(len(round_sizes))]
@@ -1012,10 +909,10 @@ def build_bracket(matches):
 
     for i, size in enumerate(round_sizes):
         if len(grouped[i]) > size:
-            logger.warning("%s has %d matches, more than the %d expected", ROUND_META[i]["name"], len(grouped[i]), size)
+            logger.warning("%s has %d matches, more than the %d expected", meta[i]["name"], len(grouped[i]), size)
         rounds.append({
-            "name": ROUND_META[i]["name"],
-            "schedule": ROUND_META[i]["schedule"],
+            "name": meta[i]["name"],
+            "schedule": meta[i]["schedule"],
             "matches": grouped[i],
         })
 
@@ -1025,7 +922,8 @@ def build_bracket(matches):
     # R32 again to R2) undid earlier alignments and drew connector lines
     # between matches that never fed each other.
     #   2:1 rounds: feeder[2i] and feeder[2i+1] feed next[i]
-    #   R2 (idx 1) -> R32 (idx 2), the MLS entry round, is 1:1: R2[i] feeds R32[i]
+    #   The round before the entry round is 1:1: feeder[i] feeds entry[i]
+    one_to_one_feeder = season["entryRound"] - 1
     for feeder_idx in range(len(rounds) - 2, -1, -1):
         next_idx = feeder_idx + 1
         feeder_round = rounds[feeder_idx]["matches"]
@@ -1035,7 +933,7 @@ def build_bracket(matches):
             continue
 
         try:
-            if feeder_idx == 1:
+            if feeder_idx == one_to_one_feeder:
                 if len(feeder_round) == len(next_round):
                     rounds[feeder_idx]["matches"] = _reorder_1to1_round(next_round, feeder_round)
                 else:
@@ -1054,4 +952,4 @@ def build_bracket(matches):
             logger.error("Reordering failed for rounds %d->%d: %s", feeder_idx, next_idx, e)
             # Keep original order on any unexpected error
 
-    return {"rounds": rounds}
+    return {"season": season["year"], "rounds": rounds}

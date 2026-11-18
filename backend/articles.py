@@ -17,6 +17,11 @@ import markdown
 from markdown.extensions import Extension
 from markdown.treeprocessors import Treeprocessor
 
+try:
+    from . import seasons
+except ImportError:
+    import seasons
+
 SITE_URL = "https://usopencup.welchproductsllc.com"
 POSTS_DIR = os.path.join(os.path.dirname(__file__), "content", "posts")
 
@@ -37,8 +42,9 @@ SITE_HOST = "usopencup.welchproductsllc.com"
 # Site links: relative ("/2026/final") or absolute to this site, any scheme,
 # case, www prefix or port
 SITE_LINK = re.compile(r'href="(?:https?://(?:www\.)?' + re.escape(SITE_HOST) + r'(?::\d+)?)?(/[^"#?]*)', re.IGNORECASE)
-# Pages outside the articles that posts may link to
-SITE_PAGES = {"/", "/news"}
+# Pages outside the articles that posts may link to, including each past
+# season's bracket page ("/2026")
+SITE_PAGES = {"/", "/news"} | {f"/{year}" for year in seasons.archived_years()}
 
 
 class ArticleError(ValueError):

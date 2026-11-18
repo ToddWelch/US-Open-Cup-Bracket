@@ -1,6 +1,17 @@
 # 2027 rollover plan
 
-Written 2026-10-28. Recommendation only: nothing here is built until Todd approves it.
+Written 2026-10-28. **Built 2026-11-18** (Todd moved it up from January): the root URL is the 2027 bracket, empty until the pairings come out, and 2026 is a frozen archive at `/2026`.
+
+## Status (2026-11-18)
+
+Done, by item number below: 1 (`backend/season_data/<year>.json`, `backend/seasons.py`), 2, 3 (plus: an ESPN event with a slug the config doesn't list is placed by its kickoff date, since ESPN's 2027 slugs aren't known yet), 5 (`backend/season_data/2026-bracket.json`, served by `/api/bracket?season=2026`; `/2026` gets its own title, description and share image from `backend/templates/seasons/`), 7 (no-data alerts only between the First Round and the Final; one alert per kind per 6 hours; fast poll noon to midnight ET), 8, 10, and every item in the checklist at the bottom.
+
+Partly done:
+- 4: the 2027 tier lists are the 2026 USL Championship, USL League One and MLS NEXT Pro members plus all 27 U.S.-based MLS clubs and announced 2027 additions. A pro team missing from the lists shows the amateur badge. **Check the lists against the First Round pairings when they come out.** Walkovers still have no flag of their own.
+- 6: new data is rejected when a round has more matches than the season allows, a winner isn't in the match or a winner contradicts the score. Not checked: every winner appearing in the next round.
+- 9: the User-Agent now carries the site URL. Not done: following the transcluded Final, and fetching the article once instead of once per section.
+
+When the pairings come out nothing has to be loaded by hand: ESPN or Wikipedia fill the bracket on the next scrape. Do a live check then (`LIVE_SOURCES=1 python -m pytest backend/tests/test_live_sources.py`) and record ESPN's 2027 round slugs in `backend/season_data/2027.json`.
 
 ## Recommendation in one paragraph
 

@@ -1,0 +1,25 @@
+{
+  "year": 2026,
+  "edition": "111th",
+  "teams": 80,
+  "purse": "$1M",
+  "wikiPage": "2026_U.S._Open_Cup",
+  "entryRound": 2,
+  "entryLabels": {"top": "MLS Team", "bottom": "R2 Winner"},
+  "rounds": [
+    {"name": "First Round", "label": "1ST ROUND", "short": "R1", "schedule": "Mar 17-19", "dates": "20260317-20260325", "espnSlug": "first-round", "size": 32},
+    {"name": "Second Round", "label": "2ND ROUND", "short": "R2", "schedule": "Mar 31 / Apr 1", "dates": "20260331-20260402", "espnSlug": "second-round", "size": 16},
+    {"name": "Round of 32", "label": "ROUND OF 32", "short": "R32", "schedule": "Apr 14-15", "dates": "20260414-20260416", "espnSlug": "round-of-32", "size": 16},
+    {"name": "Round of 16", "label": "ROUND OF 16", "short": "R16", "schedule": "Apr 28-29", "dates": "20260428-20260430", "espnSlug": "round-of-16", "size": 8},
+    {"name": "Quarterfinals", "label": "QUARTERS", "short": "QF", "schedule": "May 19-20", "dates": "20260519-20260521", "espnSlug": "quarterfinals", "size": 4},
+    {"name": "Semifinals", "label": "SEMIS", "short": "SF", "schedule": "Sep 15-16", "dates": "20260915-20260917", "espnSlug": "semifinals", "size": 2},
+    {"name": "Final", "label": "FINAL", "short": "FINAL", "schedule": "Oct 21", "dates": "20261021-20261022", "espnSlug": "final", "size": 1}
+  ],
+  "tiers": {
+    "MLS": ["Atlanta United", "Austin FC", "Charlotte FC", "Chicago Fire FC", "Colorado Rapids", "Columbus Crew", "D.C. United", "Houston Dynamo FC", "Minnesota United FC", "New England Revolution", "New York City FC", "Orlando City SC", "Red Bull New York", "San Jose Earthquakes", "Sporting Kansas City", "St. Louis CITY SC"],
+    "USL-C": ["Charleston Battery", "Detroit City FC", "Hartford Athletic", "Indy Eleven", "Loudoun United FC", "Louisville City FC", "Pittsburgh Riverhounds SC", "Rhode Island FC", "Colorado Springs Switchbacks FC", "El Paso Locomotive FC", "FC Tulsa", "Lexington SC", "New Mexico United", "Orange County SC", "Phoenix Rising FC", "Sacramento Republic FC", "San Antonio FC"],
+    "USL1": ["AV Alta FC", "Charlotte Independence", "Chattanooga Red Wolves SC", "FC Naples", "Forward Madison FC", "Greenville Triumph SC", "One Knoxville SC", "Portland Hearts of Pine", "Richmond Kickers", "Spokane Velocity FC", "Union Omaha", "Westchester SC"],
+    "MLSNP": ["Carolina Core FC", "Chattanooga FC"],
+    "USL2": ["Vermont Green FC", "Flint City Bucks", "Steel City FC", "Ventura County Fusion", "Des Moines Menace", "Northern Virginia FC", "Asheville City SC", "Flower City Union", "West Chester United SC", "Laredo Heat SC", "Little Rock Rangers"]
+  }
+}

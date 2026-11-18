@@ -1,0 +1,25 @@
+{
+  "year": 2027,
+  "edition": "112th",
+  "teams": 96,
+  "purse": "$1M",
+  "wikiPage": "2027_U.S._Open_Cup",
+  "entryRound": 1,
+  "entryLabels": {"top": "MLS / USLC Seed", "bottom": "R1 Winner"},
+  "rounds": [
+    {"name": "First Round", "label": "1ST ROUND", "short": "R1", "schedule": "Apr 13-14 / 20-21", "dates": "20270413-20270422", "espnSlug": "first-round", "size": 32},
+    {"name": "Round of 64", "label": "ROUND OF 64", "short": "R64", "schedule": "Jul 8-11", "dates": "20270708-20270712", "espnSlug": "round-of-64", "size": 32},
+    {"name": "Round of 32", "label": "ROUND OF 32", "short": "R32", "schedule": "Sep 14-15", "dates": "20270914-20270916", "espnSlug": "round-of-32", "size": 16},
+    {"name": "Round of 16", "label": "ROUND OF 16", "short": "R16", "schedule": "TBD", "dates": "", "espnSlug": "round-of-16", "size": 8},
+    {"name": "Quarterfinals", "label": "QUARTERS", "short": "QF", "schedule": "Nov 23-24", "dates": "20271123-20271125", "espnSlug": "quarterfinals", "size": 4},
+    {"name": "Semifinals", "label": "SEMIS", "short": "SF", "schedule": "Dec 1", "dates": "20271201-20271202", "espnSlug": "semifinals", "size": 2},
+    {"name": "Final", "label": "FINAL", "short": "FINAL", "schedule": "Dec 15", "dates": "20271215-20271216", "espnSlug": "final", "size": 1}
+  ],
+  "tiers": {
+    "MLS": ["Atlanta United", "Austin FC", "Charlotte FC", "Chicago Fire FC", "FC Cincinnati", "Colorado Rapids", "Columbus Crew", "FC Dallas", "D.C. United", "Houston Dynamo FC", "Sporting Kansas City", "LA Galaxy", "LAFC", "Los Angeles FC", "Inter Miami CF", "Minnesota United FC", "Nashville SC", "New England Revolution", "New York City FC", "Red Bull New York", "New York Red Bulls", "Orlando City SC", "Philadelphia Union", "Portland Timbers", "Real Salt Lake", "San Diego FC", "San Jose Earthquakes", "Seattle Sounders FC", "St. Louis CITY SC"],
+    "USL-C": ["Birmingham Legion FC", "Brooklyn FC", "Charleston Battery", "Colorado Springs Switchbacks FC", "Detroit City FC", "El Paso Locomotive FC", "FC Tulsa", "Hartford Athletic", "Indy Eleven", "Las Vegas Lights FC", "Lexington SC", "Loudoun United FC", "Louisville City FC", "Miami FC", "Monterey Bay FC", "New Mexico United", "Oakland Roots SC", "Orange County SC", "Phoenix Rising FC", "Pittsburgh Riverhounds SC", "Rhode Island FC", "Sacramento Republic FC", "San Antonio FC", "Sporting Club Jacksonville", "Tampa Bay Rowdies", "USL Dallas", "Atletico Dallas", "Atlético Dallas"],
+    "USL1": ["Athletic Club Boise", "AV Alta FC", "Charlotte Independence", "Chattanooga Red Wolves SC", "Corpus Christi FC", "FC Naples", "Fort Wayne FC", "Forward Madison FC", "Greenville Triumph SC", "New York Cosmos", "One Knoxville SC", "Portland Hearts of Pine", "Richmond Kickers", "Sarasota Paradise", "Spokane Velocity FC", "Union Omaha", "Westchester SC"],
+    "MLSNP": ["Carolina Core FC", "Chattanooga FC", "Connecticut United FC", "CT United FC"],
+    "USL2": []
+  }
+}

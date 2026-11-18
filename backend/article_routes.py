@@ -7,8 +7,10 @@ raises there and stops the app from starting.
 from flask import Blueprint, Response, abort, jsonify, render_template
 
 try:
+    from . import seasons
     from .articles import SITE_URL, load_articles
 except ImportError:
+    import seasons
     from articles import SITE_URL, load_articles
 
 bp = Blueprint("articles", __name__, template_folder="templates")
@@ -58,7 +60,9 @@ def robots_txt():
 def sitemap_xml():
     posts = published_articles()
     newest = max((a.updated or a.published for a in posts), default=None)
-    entries = [(f"{SITE_URL}/", None), (f"{SITE_URL}/news", newest)]
+    entries = [(f"{SITE_URL}/", None)]
+    entries += [(f"{SITE_URL}/{year}", None) for year in seasons.archived_years()]
+    entries += [(f"{SITE_URL}/news", newest)]
     entries += [(a.url, a.updated or a.published) for a in posts]
     lines = ['<?xml version="1.0" encoding="UTF-8"?>',
              '<urlset xmlns="http://www.sitemaps.org/schemas/sitemap/0.9">']

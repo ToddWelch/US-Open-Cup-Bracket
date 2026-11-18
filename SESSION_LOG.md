@@ -4,6 +4,28 @@ Newest first. Entries are never deleted.
 
 ---
 
+## 2026-11-18 (later): 2027 rollover built now, not in January
+
+Todd: "You're going to move the last tournaments to a secondary page and put the 2027 on. That's the whole purpose of all of this." This overrides the 2026-10-28 decision to build in January. Build class EXTERNAL.
+
+### Done (branch `feat/2027-season`)
+1. Season configs: `backend/season_data/2026.json`, `2027.json`, loaded and checked by `backend/seasons.py` (`CURRENT_YEAR = 2027`). Scraper, frontend, sitemap and article link checks read them; nothing season-specific is hard-coded any more.
+2. 2026 frozen at `/2026`: `backend/season_data/2026-bracket.json` (the verified production bracket, 79 matches, downloaded 2026-11-18), served by `/api/bracket?season=2026`. The page swaps in its own title, description, canonical and share image (`og-image-2026.png`) from `backend/templates/seasons/`.
+3. Root is 2027: 96 teams, Round of 64 entry round fed 1:1 by the First Round, empty slots labeled "MLS / USLC Seed" and "R1 Winner", status "WAITING FOR PAIRINGS" until data arrives. New share image.
+4. Scraper: ussoccer.com removed (and beautifulsoup4); ESPN events with an unknown round slug placed by kickoff date; new data checked before saving (`validate_bracket`); no-data alerts only between the First Round and the Final; one alert per kind per 6 hours; a data file from another season is ignored. Fast poll now noon to midnight ET.
+5. Page fixes found while testing: empty slots no longer show winner styling; a partly posted round no longer reads "DONE" or "Tournament Complete"; the bracket scrolls inside its own box on phones (page was about 1250px too wide).
+6. Posts link the 2026 bracket at `/2026` (four posts, `updated: 2026-11-18`); brief, plan, CLAUDE.md updated.
+
+### Verified
+- 107 backend tests pass (3 live tests skipped by default); the live tests pass with `LIVE_SOURCES=1`, including a 2027 ESPN request (HTTP 200, 0 events today).
+- Local headless check at 1600px and 390px for `/` and `/2026`: no console errors, page width equals the screen width, 95 slots for 2027 and 79 matches for 2026. A made-up partial 2027 season rendered correctly (R64 12/32 ACTIVE, winners carried forward).
+
+### Next
+1. When the First Round pairings come out (expected late January 2027): run the live tests, record ESPN's 2027 round slugs in `2027.json`, and check the tier lists against the pairings (a pro team missing from them shows the amateur badge).
+2. Still open from the plan: walkover flag, next-round winner check, Wikipedia Final transclusion.
+
+---
+
 ## 2026-11-18: Webhook rotation dropped, session closed
 
 ### Done

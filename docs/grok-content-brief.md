@@ -34,7 +34,7 @@ Use primary sources for every fact. Ranked by authority:
 
 ## What is coming up (2026-27 calendar)
 
-Dates are U.S. Soccer's and "subject to change." Check them before each post.
+Dates are U.S. Soccer's and "subject to change." Check them before each post. The 2027 bracket is on the home page (`/`) and fills in by itself from ESPN as pairings and scores come out; the finished 2026 bracket is at `/2026`.
 
 | When | Event | Posts to write |
 |---|---|---|
@@ -87,7 +87,7 @@ The site publishes in Todd's voice. These rules are not optional.
 - **`meta_description`**: 160 characters or fewer, aim for 140 to 155. Lead with the key fact or result.
 - **`slug`**: short, lowercase words joined by hyphens: `first-round-pairings`.
 - **`season`**: the tournament year the post is about, not the year it is written.
-- **Links**: link the bracket as `[full bracket](/)` and one or two related posts by their path (for example `/2026/final`). External links only to sources.
+- **Links**: link the 2027 bracket as `[full bracket](/)` and the 2026 bracket as `[2026 bracket](/2026)`, plus one or two related posts by their path (for example `/2026/final`). External links only to sources.
 - **Length**: 300 to 700 words. Use a table for results or schedules.
 
 ## File format
