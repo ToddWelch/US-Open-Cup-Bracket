@@ -22,7 +22,9 @@ Todd: "You're going to move the last tournaments to a secondary page and put the
 
 ### Shipped
 - PR #7: Crash Override APPROVED WITH NOTES on `62de9a0`, CI green, merged (`e7bddd6`) under the reviewed-merge exception. Railway deploy `6371d60f` SUCCESS. Live check: `/` is 2027 (waiting, 0 matches), `/2026` serves 79 matches with St. Louis CITY SC on penalties, `/2027` redirects, `/2025` 404, sitemap lists `/2026`; headless check of both pages at 1600px and 390px clean.
-- PR #8: the review's follow-ups (see `docs/2027-rollover-plan.md`, Status). Also `backend/tests/conftest.py` stops any test posting to the real Slack channel.
+- PR #8: the review's follow-ups (see `docs/2027-rollover-plan.md`, Status). Also `backend/tests/conftest.py` stops any test posting to the real Slack channel. Approved with notes on `de7d790`, merged (`aa4968a`), deploy `519532ee` SUCCESS.
+- PR #9: alerts now end with what really happens (backup in use, or the saved bracket kept and not updating), the outcome is part of the repeat key, one lock stops duplicate alerts, `/api/test-alert` returns 502 when Slack refuses. Approved on `2cb5ca5` after one re-review, merged (`0c6c14f`), deploy `824c8d01` SUCCESS. 114 tests pass.
+- Open from the reviews, not code: Railway's gunicorn worker count was not read (more than one worker would mean one scheduler and alert throttle per worker).
 
 ### Next
 1. When the First Round pairings come out (expected late January 2027): run the live tests, record ESPN's 2027 round slugs in `2027.json`, check the tier lists against the pairings (a pro team missing from them shows the amateur badge) and check how ESPN lists Round of 64 games early.
