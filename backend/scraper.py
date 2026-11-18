@@ -39,6 +39,9 @@ SLACK_WEBHOOK_URL = os.environ.get("SLACK_WEBHOOK_URL")
 # down does not post on every two-hour scrape
 ALERT_REPEAT_SECONDS = 6 * 3600
 _last_alert = {}
+# The full scrape and the fast poll run in separate scheduler threads and can
+# fire at the same moment; the lock stops both sending the same alert
+_alert_lock = threading.Lock()
 
 
 def _season(season):
@@ -136,13 +139,14 @@ def send_throttled_alert(key, message):
     """Send an alert unless the same kind went out within ALERT_REPEAT_SECONDS.
     Only a delivered alert starts the window, so a failed post is retried on
     the next scrape instead of going quiet for six hours."""
-    now = time.monotonic()
-    last = _last_alert.get(key)
-    if last is not None and now - last < ALERT_REPEAT_SECONDS:
-        logger.info("Alert %s sent recently, not repeating", key)
-        return
-    if send_slack_alert(message):
-        _last_alert[key] = now
+    with _alert_lock:
+        now = time.monotonic()
+        last = _last_alert.get(key)
+        if last is not None and now - last < ALERT_REPEAT_SECONDS:
+            logger.info("Alert %s sent recently, not repeating", key)
+            return
+        if send_slack_alert(message):
+            _last_alert[key] = now
 
 
 def has_games_today(bracket_data, season=None):
@@ -319,12 +323,22 @@ def scrape_bracket(season=None):
             comparison, source_used, count_matches(new_data),
         )
 
+    # Never overwrite with less data: decided here so the alerts below say
+    # what really happens to the saved bracket
+    fewer = new_data is not None and existing is not None and count_matches(new_data) < count_matches(existing)
+    replaced = new_data is not None and not fewer
+    if replaced:
+        outcome = f"Using {source_used} instead."
+    elif fewer:
+        outcome = f"The saved bracket was kept: {source_used} has fewer matches. The bracket is not updating."
+    else:
+        outcome = "The saved bracket was kept. The bracket is not updating."
     for name, problems in rejected.items():
         send_throttled_alert(
             ("invalid", name),
             f":warning: *US Open Cup Bracket - {name} data failed checks* ({season['year']})\n"
             + "\n".join(problems[:5])
-            + (f"\nUsing {source_used} instead." if source_used else "\nThe saved bracket was kept."),
+            + f"\n{outcome}",
         )
 
     # ESPN is the primary source. An error is a failure any time; no data is
@@ -341,10 +355,11 @@ def scrape_bracket(season=None):
             msg += ":red_circle: *No source has data - bracket is not updating*"
         send_throttled_alert(("sources", espn["status"], wiki["status"]), msg)
 
-    # Build scrape status metadata
+    # Build scrape status metadata. The page shows scrapeSource next to the
+    # matches, so kept data keeps the source it came from.
     scrape_info = {
         "lastScrape": now.isoformat(),
-        "scrapeSource": source_used,
+        "scrapeSource": source_used if replaced else (existing or {}).get("scrapeSource"),
         "sourceResults": source_results,
     }
 
@@ -361,8 +376,7 @@ def scrape_bracket(season=None):
         save_bracket(data)
         return
 
-    # Never overwrite with less data
-    if existing and count_matches(new_data) < count_matches(existing):
+    if fewer:
         logger.warning(
             "New data has fewer matches (%d vs %d), keeping existing",
             count_matches(new_data), count_matches(existing)

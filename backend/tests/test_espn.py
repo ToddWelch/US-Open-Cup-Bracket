@@ -229,6 +229,29 @@ class TestSeasonStates:
         assert {s["name"]: s["status"] for s in saved["sourceResults"]} == {"ESPN": "ok", "Wikipedia": "invalid"}
         assert len(alerts) == 1 and "Wikipedia data failed checks" in alerts[0] and "Using ESPN instead" in alerts[0]
 
+    def test_alert_says_the_bracket_was_kept_when_the_backup_has_fewer_matches(self, monkeypatch, tmp_path):
+        """ESPN fails its checks mid-season and Wikipedia has fewer matches
+        than the saved bracket: the bracket stops updating, and the alert and
+        the page must say so rather than claim the backup took over."""
+        alerts = use_tmp_data(monkeypatch, tmp_path)
+        saved_matches = [{"home": f"H{i}", "away": f"A{i}", "homeScore": 1, "awayScore": 0, "winner": f"H{i}", "round": 0} for i in range(3)]
+        saved = scraper.build_bracket(saved_matches)
+        saved["scrapeSource"] = "ESPN"
+        scraper.save_bracket(saved)
+        espn = saved_matches + [{"home": "X", "away": "Y", "homeScore": 2, "awayScore": 0, "winner": "Y", "round": 0}]
+        monkeypatch.setattr(scraper, "fetch_espn", lambda season=None: espn)
+        monkeypatch.setattr(scraper, "fetch_wikipedia", lambda season=None: saved_matches[:2])
+
+        scraper.scrape_bracket()
+        kept = scraper.load_existing()
+
+        assert kept["rounds"][0]["matches"] == saved_matches
+        assert kept["scrapeStatus"] == "stale"
+        assert kept["scrapeSource"] == "ESPN"
+        assert len(alerts) == 1
+        assert "The saved bracket was kept: Wikipedia has fewer matches. The bracket is not updating." in alerts[0]
+        assert "Using Wikipedia instead" not in alerts[0]
+
     def test_a_failed_slack_post_is_retried_next_scrape(self, monkeypatch, tmp_path):
         use_tmp_data(monkeypatch, tmp_path)
         attempts = []
