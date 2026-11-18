@@ -104,6 +104,26 @@ class TestApi:
         assert client.get("/api/bracket?season=2025").status_code == 404
 
 
+class TestTestAlert:
+    """The webhook check after a rotation relies on this endpoint's answer."""
+
+    @pytest.fixture
+    def admin(self, client, monkeypatch):
+        from backend import app as app_module
+        monkeypatch.setattr(app_module, "ADMIN_KEY", "test-key")
+        return app_module
+
+    def test_failed_post_is_reported_as_a_failure(self, client, admin, monkeypatch):
+        monkeypatch.setattr(admin, "send_slack_alert", lambda msg: False)
+        r = client.post("/api/test-alert", headers={"X-Admin-Key": "test-key"})
+        assert r.status_code == 502 and r.get_json() == {"status": "alert failed"}
+
+    def test_delivered_post_is_reported_as_sent(self, client, admin, monkeypatch):
+        monkeypatch.setattr(admin, "send_slack_alert", lambda msg: True)
+        r = client.post("/api/test-alert", headers={"X-Admin-Key": "test-key"})
+        assert r.status_code == 200 and r.get_json() == {"status": "alert sent"}
+
+
 class TestSeasonPages:
     def test_2026_page_has_its_own_title_canonical_and_card(self, client):
         r = client.get("/2026")

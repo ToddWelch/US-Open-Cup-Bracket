@@ -66,7 +66,9 @@ def api_test_alert():
     auth_err = check_admin_key()
     if auth_err:
         return auth_err
-    send_slack_alert(":test_tube: *US Open Cup Bracket - Test Alert*\nSlack integration is working.")
+    if not send_slack_alert(":test_tube: *US Open Cup Bracket - Test Alert*\nSlack integration is working."):
+        # A missing, revoked or rotated-away webhook must not read as success
+        return jsonify({"status": "alert failed"}), 502
     return jsonify({"status": "alert sent"})
 
 
