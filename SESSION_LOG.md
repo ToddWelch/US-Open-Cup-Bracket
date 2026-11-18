@@ -4,6 +4,30 @@ Newest first. Entries are never deleted.
 
 ---
 
+## 2026-11-18: Webhook rotation dropped, session closed
+
+### Done
+- Search Console: property verified; `https://usopencup.welchproductsllc.com/sitemap.xml` submitted (status Success, 6 pages). Real-Chrome check of the live site came back clean.
+- Webhook identification, from Slack's own "added an integration" messages in #web-app-alerts: the webhook both the bracket and Wrestling Ratings use was added 2026-03-20 (sender `B0AMGADHQCX`). A second webhook to the same channel, added 2026-03-24 (sender `B0ANHDBA030`), is used by no Railway service; its full URL was shown to Claude in Chrome on the Webapp Errors app's settings page.
+
+### Decided
+- **Rotation dropped (Todd, 2026-11-18; overridable).** The in-use webhook could only have leaked through Railway logs from before PR #4, and those logs no longer exist. The worst case is fake posts in #web-app-alerts. Two tmux paste prompts went unused. To rotate later: add a webhook in the Webapp Errors app, set `SLACK_WEBHOOK_URL` on both US-Open-Cup-Bracket and wrestling-ratings, check both, send one test alert, then delete the March webhooks.
+- Recommended to Todd, not confirmed done: delete the unused Mar 24 webhook (Webapp Errors app, Incoming Webhooks).
+
+### State
+- Live and healthy on 2026-11-18. Full scrape every 2 hours; ESPN every 2 minutes from 6pm to midnight ET on game days. The 2026 final is shown correctly.
+- Not automatic: the 2027 season (rollover build in January 2027) and new articles (Grok drafts, reviewed before they go up).
+
+### Next
+1. Hand `docs/grok-content-brief.md` to the Grok agent; drafts come back for review.
+2. Early January 2027: rollover build (`docs/2027-rollover-plan.md`).
+3. Known residuals: the bracket page is about 1250px wide at phone width (fix in the rollover); the CI dash scan doesn't decode JS or CSS escapes; the startup scrape is synchronous and can outlast the 10s healthcheck window.
+
+### Estimate vs actual
+- Rotation was estimated at 2 minutes of Todd's time. It took several Claude in Chrome round trips and never finished. Lesson: settle ownership from Slack history and Railway before asking Todd, and never open a prompt without saying what it is for.
+
+---
+
 ## 2026-11-05: Search Console verification, webhook rotation under way
 
 **Corrects the entry below:** PR #4 was approved by Crash Override at `c7d0b29`, merged with Todd's approval (`c09648c`) and deployed on 2026-10-29 at 10:14 UTC. The live site was checked after the deploy.
