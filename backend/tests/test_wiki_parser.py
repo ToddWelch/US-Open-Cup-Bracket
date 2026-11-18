@@ -11,6 +11,7 @@ import os
 # Ensure the backend package is importable when running from the repo root
 sys.path.insert(0, os.path.join(os.path.dirname(__file__), "..", ".."))
 
+from backend import seasons
 from backend.scraper import map_wiki_sections, parse_wiki_box
 
 
@@ -133,7 +134,7 @@ class TestSectionMapping:
 
     def test_exact_headings_map_to_rounds(self):
         sections = [{"index": i, "line": line} for i, line in self.SECTIONS_2026]
-        assert map_wiki_sections(sections) == {
+        assert map_wiki_sections(sections, seasons.get(2026)) == {
             0: "8", 1: "9", 2: "12", 3: "14", 4: "16", 5: "17", 6: "18",
         }
 
@@ -141,4 +142,12 @@ class TestSectionMapping:
         """Before the Final section existed, substring matching mapped the
         Final to the Semifinals section and showed a semifinal as the Final."""
         sections = [{"index": "17", "line": "Semifinals"}]
-        assert map_wiki_sections(sections) == {5: "17"}
+        assert map_wiki_sections(sections, seasons.get(2026)) == {5: "17"}
+
+    def test_2027_headings_follow_the_2027_rounds(self):
+        """2027 has a Round of 64 and no Second Round; qualifying headings
+        must not land in a bracket round."""
+        sections = [{"index": i, "line": line} for i, line in [
+            ("3", "First qualifying round"), ("6", "First round"), ("7", "Second round"),
+            ("8", "Round of 64"), ("9", "Round of 32"), ("12", "Quarter-finals"), ("14", "Final")]]
+        assert map_wiki_sections(sections, seasons.get(2027)) == {0: "6", 1: "8", 2: "9", 4: "12", 6: "14"}

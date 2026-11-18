@@ -1,14 +1,16 @@
 import hmac
-import json
 import logging
 import os
-from flask import Flask, jsonify, request, send_from_directory
+import re
+from flask import Flask, Response, abort, jsonify, redirect, render_template, request, send_from_directory
 try:
-    from .scraper import scrape_bracket, send_slack_alert
+    from . import seasons
+    from .scraper import build_bracket, load_existing, scrape_bracket, send_slack_alert
     from .scheduler import init_scheduler
     from .article_routes import bp as articles_bp
 except ImportError:
-    from scraper import scrape_bracket, send_slack_alert
+    import seasons
+    from scraper import build_bracket, load_existing, scrape_bracket, send_slack_alert
     from scheduler import init_scheduler
     from article_routes import bp as articles_bp
 
@@ -20,26 +22,27 @@ app = Flask(__name__, static_folder="../frontend/dist", static_url_path="")
 app.register_blueprint(articles_bp)
 
 DATA_DIR = os.path.join(os.path.dirname(__file__), "data")
-BRACKET_FILE = os.path.join(DATA_DIR, "bracket.json")
 
-
-def load_bracket():
-    if not os.path.exists(BRACKET_FILE):
-        return None
-    try:
-        with open(BRACKET_FILE, "r") as f:
-            return json.load(f)
-    except (json.JSONDecodeError, OSError) as e:
-        logger.warning("Failed to read bracket.json: %s", e)
-        return None
+# index.html marks the parts that differ per season; an archive page swaps
+# them for its own templates/seasons/<year>_head.html and _noscript.html
+SEASON_BLOCKS = {
+    "head": re.compile(r"<!-- season-head:start -->.*?<!-- season-head:end -->", re.S),
+    "noscript": re.compile(r"<!-- season-noscript:start -->.*?<!-- season-noscript:end -->", re.S),
+}
 
 
 @app.route("/api/bracket")
 def api_bracket():
-    data = load_bracket()
-    if data is None:
-        return jsonify({"error": "No bracket data available"}), 503
-    return jsonify(data)
+    year = request.args.get("season", default=seasons.CURRENT_YEAR, type=int)
+    season = seasons.get(year)
+    if year == seasons.CURRENT_YEAR:
+        # Before the first scrape there is no file: an empty bracket, not an error
+        data = load_existing(season) or build_bracket([], season)
+    elif season and year in seasons.archived_years():
+        data = seasons.load_archive(year)
+    else:
+        return jsonify({"error": "Unknown season"}), 404
+    return jsonify({**data, "seasonInfo": seasons.public_info(season)})
 
 
 @app.route("/api/health")
@@ -73,7 +76,7 @@ def api_scrape():
     if auth_err:
         return auth_err
     scrape_bracket()
-    data = load_bracket()
+    data = load_existing()
     if data is None:
         return jsonify({"status": "error", "message": "Scrape produced no data"}), 500
     return jsonify({
@@ -82,6 +85,26 @@ def api_scrape():
         "lastScrape": data.get("lastScrape"),
         "sourceResults": data.get("sourceResults"),
     })
+
+
+@app.route("/<int(fixed_digits=4):year>")
+def season_page(year):
+    """A past season's bracket: the same page with that season's title,
+    description and share card. The current season lives on the root URL."""
+    if year == seasons.CURRENT_YEAR:
+        return redirect("/", code=301)
+    if year not in seasons.archived_years():
+        abort(404)
+    with open(os.path.join(app.static_folder, "index.html")) as f:
+        html = f.read()
+    for block, pattern in SEASON_BLOCKS.items():
+        if not pattern.search(html):
+            # A build that lost the markers would serve the wrong season's
+            # title and description; fail instead
+            raise RuntimeError(f"index.html has no season-{block} markers")
+        replacement = render_template(f"seasons/{year}_{block}.html")
+        html = pattern.sub(lambda _: replacement, html, count=1)
+    return Response(html, mimetype="text/html")
 
 
 @app.route("/")
@@ -99,10 +122,9 @@ def static_files(path):
 
 os.makedirs(DATA_DIR, exist_ok=True)
 
-# Run initial scrape if bracket data is missing
-bracket = load_bracket()
-if bracket is None or not bracket.get("rounds"):
-    print("No bracket data found, running initial scrape...")
+# Run initial scrape if this season has no saved bracket
+if load_existing() is None:
+    print("No bracket data found for this season, running initial scrape...")
     scrape_bracket()
 
 init_scheduler()

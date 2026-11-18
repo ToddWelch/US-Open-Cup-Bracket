@@ -6,6 +6,7 @@ target_phrase: 2027 U.S. Open Cup schedule
 season: 2027
 slug: format-and-schedule
 published: 2026-10-28
+updated: 2026-11-18
 status: published
 source: U.S. Soccer, Format Finalized for 2027 Lamar Hunt U.S. Open Cup | https://ussoccer.com/stories/2026/09/usoc/format-finalized-2027-lamar-hunt-us-open-cup-all-27-us-based-mls-teams
 ---
@@ -55,4 +56,4 @@ Three MLS NEXT Pro teams are eligible because they aren't affiliated with an MLS
 
 ## What comes next
 
-U.S. Soccer plans to announce the First Round pairings in early 2027. Here's [how the 2027 draw works](/2027/draw). In the meantime, the [full 2026 bracket](/) has every result from this year.
+U.S. Soccer plans to announce the First Round pairings in early 2027. Here's [how the 2027 draw works](/2027/draw). The [2027 bracket](/) fills in as the pairings and scores come out, and the [full 2026 bracket](/2026) has every result from this year.

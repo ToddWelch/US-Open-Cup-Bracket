@@ -5,6 +5,7 @@ target_phrase: 2026 U.S. Open Cup final
 season: 2026
 slug: final
 published: 2026-10-28
+updated: 2026-11-18
 status: published
 source: U.S. Soccer, 2026 U.S. Open Cup Final recap | https://www.ussoccer.com/stories/2026/10/usoc/match-recap-st-louis-city-vs-columbus-crew-open-cup-final
 source: ESPN, St. Louis CITY SC at Columbus Crew | https://www.espn.com/soccer/match/_/gameId/401916449/st-louis-city-sc-columbus-crew
@@ -51,4 +52,4 @@ Columbus didn't lose a match in regulation or extra time and played the last fou
 
 ## See every round
 
-The [full 2026 bracket](/) has every match from the 32 First Round games in March to the Final.
+The [full 2026 bracket](/2026) has every match from the 32 First Round games in March to the Final.

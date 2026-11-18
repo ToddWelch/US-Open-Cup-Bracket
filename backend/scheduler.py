@@ -48,10 +48,11 @@ def init_scheduler():
         replace_existing=True,
     )
 
-    # ESPN-only fast poll: every 2 minutes, 6pm-midnight ET on game days
+    # ESPN-only fast poll: every 2 minutes, noon to midnight ET on game days
+    # (the 2027 Round of 64 runs Thursday to Sunday, with afternoon games)
     scheduler.add_job(
         run_fast_poll,
-        CronTrigger(minute="*/2", hour="18-23", timezone="US/Eastern"),
+        CronTrigger(minute="*/2", hour="12-23", timezone="US/Eastern"),
         id="scrape_gameday_live",
         replace_existing=True,
     )
