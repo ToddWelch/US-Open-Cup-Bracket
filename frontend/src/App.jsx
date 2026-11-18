@@ -184,14 +184,12 @@ function buildRegion(matches, padTop, convergeDir, roundData, entryRound) {
         }
 
         const adjustedMidY = newY + sz.ch / 2;
-        // Use API match data if available, otherwise build from winners
+        // Only posted matches are shown. Winners are not paired up ahead of
+        // time: later rounds are set by a draw, and until the next round is
+        // posted the feeders sit in kickoff order, so neighbours are not
+        // opponents.
         const matchIdx = i / 2;
-        let cellMatch = apiMatches[matchIdx] || null;
-        if (!cellMatch) {
-          const w1 = p1.match ? getWinner(p1.match) : null;
-          const w2 = p2?.match ? getWinner(p2.match) : null;
-          if (w1 || w2) cellMatch = { home: w1 || null, away: w2 || null, homeScore: null, awayScore: null };
-        }
+        const cellMatch = apiMatches[matchIdx] || null;
         cur.push({ x: cx, y: newY, match: cellMatch, roundIdx: rIdx });
         conns.push({ x1: p1.x + pSz.cw, y1: p1mid, x2: cx, y2: adjustedMidY });
         if (p2) conns.push({ x1: p2.x + pSz.cw, y1: p2mid, x2: cx, y2: adjustedMidY });
@@ -491,6 +489,7 @@ export default function App() {
   const STATUS_LABELS = { waiting: "WAITING FOR PAIRINGS" };
   const statusLabel = s => STATUS_LABELS[s] || s.toUpperCase();
   const otherSeason = season.current ? season.archives[0] : season.currentYear;
+  const SeasonCopy = SEASON_COPY[season.year];
 
   // Next unplayed match across all rounds (skip empty placeholder matches)
   let nextMatch = null;
@@ -737,7 +736,7 @@ export default function App() {
 
       {/* SEO CONTENT */}
       <article style={{ borderTop: "1px solid #1a3a2a", padding: "24px 20px", background: "#f7f7f7", maxWidth: 900 }}>
-        {season.year === 2026 ? <Season2026Copy /> : <Season2027Copy />}
+        {SeasonCopy && <SeasonCopy />}
         <h3 style={{ fontSize: 16, fontWeight: 700, color: "#212844", marginBottom: 8 }}>About This Bracket</h3>
         <p style={{ fontSize: 15, color: "#555", lineHeight: 1.7, marginBottom: 0 }}>
           Teams are color-coded by league: MLS, USL Championship, USL League One, MLS NEXT Pro, USL League Two
@@ -796,7 +795,7 @@ export default function App() {
               <strong style={{ color: "#15192B" }}>foreignObject</strong> elements for rich HTML match cells.
               Upper and lower brackets are computed independently with L-shaped connector paths joining rounds.
               Cell sizes, fonts, and badge sizes scale progressively from 11px in the First Round up to 16px in the Final.
-              Winners propagate forward automatically, and cupset detection compares tier rankings to flag lower-division upsets.
+              Each round fills in as its matchups are posted, and cupset detection compares tier rankings to flag lower-division upsets.
             </p>
           </div>
 
@@ -880,7 +879,10 @@ export default function App() {
 }
 
 /* ═══════════ SEASON COPY ═══════════ */
-const H2 = { fontSize: 20, fontWeight: 700, color: "#15192B", marginBottom: 12 };
+// One entry per season config (backend/tests/test_seasons.py checks this)
+const SEASON_COPY = { 2026: Season2026Copy, 2027: Season2027Copy };
+
+const H2 ={ fontSize: 20, fontWeight: 700, color: "#15192B", marginBottom: 12 };
 const H3 = { fontSize: 16, fontWeight: 700, color: "#212844", marginBottom: 8 };
 const P = { fontSize: 15, color: "#555", lineHeight: 1.7, marginBottom: 12 };
 

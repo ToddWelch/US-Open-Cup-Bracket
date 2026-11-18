@@ -40,6 +40,14 @@ class TestConfigs:
                 text = f.read()
             assert not any(ch in text for ch in BANNED_CHARS), name
 
+    def test_every_season_has_page_copy(self):
+        """The page's description section is per season; a new season with
+        no entry in SEASON_COPY would show no description at all."""
+        with open(os.path.join(REPO, "frontend", "src", "App.jsx"), encoding="utf-8") as f:
+            app = f.read()
+        for year in seasons.SEASONS:
+            assert f"{year}: Season{year}Copy" in app, year
+
     def test_2027_tiers_cover_all_27_us_mls_clubs(self):
         mls = seasons.get(2027)["tiers"]["MLS"]
         # Two clubs are listed under both spellings sources use
@@ -114,8 +122,9 @@ class TestSeasonPages:
         assert '<a href="/2026">the 2026 bracket and results</a>' in body
 
     def test_current_year_url_redirects_to_root(self, client):
+        """Temporary (302): /2027 becomes the 2027 archive once the season ends."""
         r = client.get("/2027")
-        assert r.status_code == 301 and r.headers["Location"].endswith("/")
+        assert r.status_code == 302 and r.headers["Location"].endswith("/")
 
     def test_unknown_year_is_404(self, client):
         assert client.get("/2025").status_code == 404

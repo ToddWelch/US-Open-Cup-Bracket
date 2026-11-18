@@ -92,7 +92,9 @@ def season_page(year):
     """A past season's bracket: the same page with that season's title,
     description and share card. The current season lives on the root URL."""
     if year == seasons.CURRENT_YEAR:
-        return redirect("/", code=301)
+        # Temporary: this URL becomes the season's archive page once it ends,
+        # and browsers would keep a permanent redirect cached past that
+        return redirect("/", code=302)
     if year not in seasons.archived_years():
         abort(404)
     with open(os.path.join(app.static_folder, "index.html")) as f:

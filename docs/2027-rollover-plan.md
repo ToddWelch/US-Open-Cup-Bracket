@@ -11,7 +11,11 @@ Partly done:
 - 6: new data is rejected when a round has more matches than the season allows, a winner isn't in the match or a winner contradicts the score. Not checked: every winner appearing in the next round.
 - 9: the User-Agent now carries the site URL. Not done: following the transcluded Final, and fetching the article once instead of once per section.
 
-When the pairings come out nothing has to be loaded by hand: ESPN or Wikipedia fill the bracket on the next scrape. Do a live check then (`LIVE_SOURCES=1 python -m pytest backend/tests/test_live_sources.py`) and record ESPN's 2027 round slugs in `backend/season_data/2027.json`.
+When the pairings come out nothing has to be loaded by hand: ESPN or Wikipedia fill the bracket on the next scrape. Do a live check then (`LIVE_SOURCES=1 python -m pytest backend/tests/test_live_sources.py`) and record ESPN's 2027 round slugs in `backend/season_data/2027.json`. An ESPN round name the config doesn't list now sends a Slack alert (placed by date or dropped, with counts), so a missed slug shows up on its own.
+
+Also check at pairings time: how ESPN lists Round of 64 games before the First Round is played (TBD opponents, a few at a time). Until the Round of 64 has all 32 games, the First Round is not reordered against it, so a connector line can join a First Round match to an unrelated Round of 64 slot.
+
+Follow-ups from the PR #7 review, done in PR #8: later rounds no longer pair up winners before the draw is posted; unknown ESPN round names alert; each source's data is checked before one is chosen; a failed Slack post no longer silences that alert for 6 hours; `/2027` redirects with 302, not 301; the page's season text is looked up per season.
 
 ## Recommendation in one paragraph
 

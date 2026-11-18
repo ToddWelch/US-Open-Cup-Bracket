@@ -113,32 +113,36 @@ def count_matches(data):
 
 
 def send_slack_alert(message):
-    """Send an alert to Slack via incoming webhook."""
+    """Send an alert to Slack via incoming webhook. True when Slack accepted it."""
     if not SLACK_WEBHOOK_URL:
         logger.warning("SLACK_WEBHOOK_URL not set, skipping alert")
-        return
+        return False
     try:
         resp = requests.post(SLACK_WEBHOOK_URL, json={"text": message}, timeout=10)
         # Status code only; resp.url is the webhook
         if resp.status_code >= 400:
             logger.error("Slack alert rejected: HTTP %d", resp.status_code)
-        else:
-            logger.info("Slack alert sent")
+            return False
+        logger.info("Slack alert sent")
+        return True
     except Exception as e:
         # Type only: requests exception text includes the request URL, and
         # the webhook URL is the secret
         logger.error("Slack alert failed: %s", type(e).__name__)
+        return False
 
 
 def send_throttled_alert(key, message):
-    """Send an alert unless the same kind went out within ALERT_REPEAT_SECONDS."""
+    """Send an alert unless the same kind went out within ALERT_REPEAT_SECONDS.
+    Only a delivered alert starts the window, so a failed post is retried on
+    the next scrape instead of going quiet for six hours."""
     now = time.monotonic()
     last = _last_alert.get(key)
     if last is not None and now - last < ALERT_REPEAT_SECONDS:
         logger.info("Alert %s sent recently, not repeating", key)
         return
-    _last_alert[key] = now
-    send_slack_alert(message)
+    if send_slack_alert(message):
+        _last_alert[key] = now
 
 
 def has_games_today(bracket_data, season=None):
@@ -278,19 +282,32 @@ def scrape_bracket(season=None):
             source_results.append({"name": name, "status": "error", "error": type(e).__name__, "matches": 0})
             logger.warning("%s failed: %s", name, e)
 
+    # Check each source's data before choosing, so a source with bad data
+    # cannot shut out a good one just by having more matches
+    candidates = {}
+    rejected = {}
+    for name, result in all_results.items():
+        built = build_bracket(result, season)
+        problems = validate_bracket(built, season)
+        if problems:
+            rejected[name] = problems
+            next(s for s in source_results if s["name"] == name)["status"] = "invalid"
+            logger.warning("%s data failed checks: %s", name, "; ".join(problems))
+        else:
+            candidates[name] = built
+
     # Select the source with the most matches. On ties, preserve priority
     # order (ESPN > Wikipedia) since sources are iterated in that order and
     # max() with key is stable.
-    matches = []
+    new_data = None
     source_used = None
-    if all_results:
+    if candidates:
         priority_order = [name for name, _ in sources]
-        best_name = max(
-            all_results,
-            key=lambda n: (len(all_results[n]), -priority_order.index(n)),
+        source_used = max(
+            candidates,
+            key=lambda n: (count_matches(candidates[n]), -priority_order.index(n)),
         )
-        matches = all_results[best_name]
-        source_used = best_name
+        new_data = candidates[source_used]
 
         # Log comparison across all sources
         comparison = ", ".join(
@@ -299,7 +316,15 @@ def scrape_bracket(season=None):
         )
         logger.info(
             "Source comparison: %s. Using %s (%d matches)",
-            comparison, source_used, len(matches),
+            comparison, source_used, count_matches(new_data),
+        )
+
+    for name, problems in rejected.items():
+        send_throttled_alert(
+            ("invalid", name),
+            f":warning: *US Open Cup Bracket - {name} data failed checks* ({season['year']})\n"
+            + "\n".join(problems[:5])
+            + (f"\nUsing {source_used} instead." if source_used else "\nThe saved bracket was kept."),
         )
 
     # ESPN is the primary source. An error is a failure any time; no data is
@@ -323,33 +348,16 @@ def scrape_bracket(season=None):
         "sourceResults": source_results,
     }
 
-    if not matches:
+    if new_data is None:
         # Before the pairings are out, an empty bracket is the right answer
-        waiting = not in_season(season) and count_matches(existing) == 0
+        waiting = not rejected and not in_season(season) and count_matches(existing) == 0
         if waiting:
             logger.info("No source has matches yet")
         else:
-            logger.warning("All sources returned no data")
+            logger.warning("No source has usable data, keeping saved bracket")
         data = existing or build_bracket([], season)
         data.update(scrape_info)
         data["scrapeStatus"] = "waiting" if waiting else "stale"
-        save_bracket(data)
-        return
-
-    new_data = build_bracket(matches, season)
-
-    problems = validate_bracket(new_data, season)
-    if problems:
-        logger.warning("%s data failed checks, keeping saved bracket: %s", source_used, "; ".join(problems))
-        send_throttled_alert(
-            ("invalid", source_used),
-            f":warning: *US Open Cup Bracket - {source_used} data failed checks* ({season['year']})\n"
-            + "\n".join(problems[:5])
-            + "\nThe saved bracket was kept.",
-        )
-        data = existing or build_bracket([], season)
-        data.update(scrape_info)
-        data["scrapeStatus"] = "stale"
         save_bracket(data)
         return
 
@@ -413,20 +421,35 @@ def fetch_espn(season=None):
     meta = season["rounds"]
     slug_to_round = {r["espnSlug"]: i for i, r in enumerate(meta)}
     by_round = [[] for _ in meta]
+    unknown = {}  # slug -> [placed by date, dropped]
     for event in events:
         slug = (event.get("season") or {}).get("slug")
         round_idx = slug_to_round.get(slug)
         if round_idx is None:
             round_idx = round_for_date(event.get("date"), season)
+            counts = unknown.setdefault(slug, [0, 0])
             if round_idx is None:
+                counts[1] += 1
                 logger.warning("ESPN: skipping event %s with unknown round slug %r", event.get("id"), slug)
                 continue
+            counts[0] += 1
             logger.warning("ESPN: event %s has unknown round slug %r; placed in %s by its date",
                            event.get("id"), slug, meta[round_idx]["name"])
         match = parse_espn_event(event)
         if match:
             match["round"] = round_idx
             by_round[round_idx].append(match)
+
+    if unknown:
+        # A renamed round or moved dates would otherwise drop games silently
+        # while ESPN still reports "ok" for the rounds it does place
+        lines = [f"`{slug}`: {placed} placed by date, {dropped} dropped" for slug, (placed, dropped) in sorted(unknown.items(), key=str)]
+        send_throttled_alert(
+            ("espn-slugs", tuple(sorted(map(str, unknown)))),
+            f":warning: *US Open Cup Bracket - ESPN round names not in the {season['year']} config*\n"
+            + "\n".join(lines)
+            + f"\nAdd them as espnSlug in backend/season_data/{season['year']}.json.",
+        )
 
     for rnd, round_matches in zip(meta, by_round):
         if round_matches:

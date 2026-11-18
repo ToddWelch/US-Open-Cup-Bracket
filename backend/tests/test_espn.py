@@ -81,9 +81,16 @@ class TestRoundOrdering:
             make_event("q", "qualifying", "X", "Y", 1, 0, "2027-02-01T20:00Z", winner="X"),
         ]
         monkeypatch.setattr(scraper.requests, "get", lambda *a, **k: FakeResponse({"events": events}))
+        monkeypatch.setattr(scraper, "_last_alert", {})
+        alerts = []
+        monkeypatch.setattr(scraper, "send_slack_alert", lambda msg: alerts.append(msg) or True)
         matches = scraper.fetch_espn(SEASON_2027)
 
         assert [(m["home"], m["round"]) for m in matches] == [("Richmond Kickers", 0), ("Nashville SC", 1)]
+        # Unknown names are reported, so a renamed round can't drop games silently
+        assert len(alerts) == 1
+        assert "`qualifying`: 0 placed by date, 1 dropped" in alerts[0]
+        assert "`round-64`: 1 placed by date, 0 dropped" in alerts[0]
 
 
 class TestSlackAlertLogging:
@@ -153,7 +160,8 @@ def use_tmp_data(monkeypatch, tmp_path):
     monkeypatch.setattr(scraper, "BRACKET_FILE", str(tmp_path / "bracket.json"))
     monkeypatch.setattr(scraper, "_last_alert", {})
     alerts = []
-    monkeypatch.setattr(scraper, "send_slack_alert", alerts.append)
+    # Accepted by Slack: True starts the repeat window
+    monkeypatch.setattr(scraper, "send_slack_alert", lambda msg: alerts.append(msg) or True)
     return alerts
 
 
@@ -202,6 +210,32 @@ class TestSeasonStates:
         assert saved["rounds"][0]["matches"] == [good]
         assert saved["scrapeStatus"] == "stale"
         assert len(alerts) == 1 and "failed checks" in alerts[0]
+
+    def test_bad_backup_data_cannot_shut_out_good_espn_data(self, monkeypatch, tmp_path):
+        """Wikipedia with more matches but a contradicted winner used to win
+        on count and then fail the checks, so good ESPN data was never used."""
+        alerts = use_tmp_data(monkeypatch, tmp_path)
+        espn = [{"home": "A", "away": "B", "homeScore": 2, "awayScore": 0, "winner": "A", "round": 0}]
+        wiki = [dict(espn[0], winner="B"), {"home": "C", "away": "D", "homeScore": 1, "awayScore": 0, "winner": "C", "round": 0}]
+        monkeypatch.setattr(scraper, "fetch_espn", lambda season=None: espn)
+        monkeypatch.setattr(scraper, "fetch_wikipedia", lambda season=None: wiki)
+
+        scraper.scrape_bracket()
+        saved = scraper.load_existing()
+
+        assert saved["scrapeSource"] == "ESPN"
+        assert saved["scrapeStatus"] == "ok"
+        assert saved["rounds"][0]["matches"] == espn
+        assert {s["name"]: s["status"] for s in saved["sourceResults"]} == {"ESPN": "ok", "Wikipedia": "invalid"}
+        assert len(alerts) == 1 and "Wikipedia data failed checks" in alerts[0] and "Using ESPN instead" in alerts[0]
+
+    def test_a_failed_slack_post_is_retried_next_scrape(self, monkeypatch, tmp_path):
+        use_tmp_data(monkeypatch, tmp_path)
+        attempts = []
+        monkeypatch.setattr(scraper, "send_slack_alert", lambda msg: attempts.append(msg) and False)
+        scraper.send_throttled_alert(("k",), "first")
+        scraper.send_throttled_alert(("k",), "second")
+        assert attempts == ["first", "second"]
 
     def test_a_2026_file_is_not_shown_as_2027(self, monkeypatch, tmp_path):
         """A data file left from before the rollover counts as missing, so
