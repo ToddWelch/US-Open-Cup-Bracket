@@ -20,9 +20,16 @@ Todd: "You're going to move the last tournaments to a secondary page and put the
 - 107 backend tests pass (3 live tests skipped by default); the live tests pass with `LIVE_SOURCES=1`, including a 2027 ESPN request (HTTP 200, 0 events today).
 - Local headless check at 1600px and 390px for `/` and `/2026`: no console errors, page width equals the screen width, 95 slots for 2027 and 79 matches for 2026. A made-up partial 2027 season rendered correctly (R64 12/32 ACTIVE, winners carried forward).
 
+### Shipped
+- PR #7: Crash Override APPROVED WITH NOTES on `62de9a0`, CI green, merged (`e7bddd6`) under the reviewed-merge exception. Railway deploy `6371d60f` SUCCESS. Live check: `/` is 2027 (waiting, 0 matches), `/2026` serves 79 matches with St. Louis CITY SC on penalties, `/2027` redirects, `/2025` 404, sitemap lists `/2026`; headless check of both pages at 1600px and 390px clean.
+- PR #8: the review's follow-ups (see `docs/2027-rollover-plan.md`, Status). Also `backend/tests/conftest.py` stops any test posting to the real Slack channel.
+
 ### Next
-1. When the First Round pairings come out (expected late January 2027): run the live tests, record ESPN's 2027 round slugs in `2027.json`, and check the tier lists against the pairings (a pro team missing from them shows the amateur badge).
+1. When the First Round pairings come out (expected late January 2027): run the live tests, record ESPN's 2027 round slugs in `2027.json`, check the tier lists against the pairings (a pro team missing from them shows the amateur badge) and check how ESPN lists Round of 64 games early.
 2. Still open from the plan: walkover flag, next-round winner check, Wikipedia Final transclusion.
+
+### Estimate vs actual
+- Plan estimate: 4 to 6 hours of agent compute for items 1 to 9. Actual: about 2.5 hours of agent compute for items 1 to 8 and 10, with 9 partly done, including review and two deploys.
 
 ---
 
